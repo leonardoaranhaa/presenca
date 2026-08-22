@@ -77,9 +77,7 @@ export function skillRetrieve(ctx: SkillContext): SkillResult {
   );
   return {
     model: ctx.model,
-    output: hits
-      .map((h, i) => `(${i + 1}) [bm25f=${h.bm25.toFixed(2)}] ${h.text}`)
-      .join("\n"),
+    output: hits.map((h, i) => `(${i + 1}) [bm25f=${h.bm25.toFixed(2)}] ${h.text}`).join("\n"),
     notes: [`${hits.length} traços BM25F/hybrid`],
   };
 }
@@ -109,9 +107,7 @@ export function skillEvolve(ctx: SkillContext): SkillResult {
     .map((t) => (t.fields?.title || t.text).trim().slice(0, 80))
     .filter(Boolean);
 
-  const base =
-    ctx.persona.soul?.summary?.trim() ||
-    `Presença mímica de ${ctx.persona.name}.`;
+  const base = ctx.persona.soul?.summary?.trim() || `Presença mímica de ${ctx.persona.name}.`;
 
   const parts = [base];
   if (topTraits.length) parts.push(`Traços dominantes: ${topTraits.join(", ")}.`);
@@ -122,10 +118,10 @@ export function skillEvolve(ctx: SkillContext): SkillResult {
     model: {
       ...model,
       evolvingSummary: parts.join(" ").slice(0, 600),
-      mannerisms: unique([
-        ...model.mannerisms,
-        ...(ctx.persona.soul?.mannerisms ?? []),
-      ]).slice(0, 12),
+      mannerisms: unique([...model.mannerisms, ...(ctx.persona.soul?.mannerisms ?? [])]).slice(
+        0,
+        12,
+      ),
       updatedAt: Date.now(),
     },
     notes: ["modelo evoluiu"],

@@ -77,9 +77,7 @@ export type Bm25Index = {
   n: number;
 };
 
-export function buildBm25Index(
-  items: { id: string; text: string; weight?: number }[],
-): Bm25Index {
+export function buildBm25Index(items: { id: string; text: string; weight?: number }[]): Bm25Index {
   const docs: Bm25Doc[] = [];
   const df = new Map<string, number>();
   let totalLen = 0;
@@ -176,9 +174,7 @@ export function buildBm25FIndex(
 
   for (const it of items) {
     const rawFields =
-      it.fields && Object.keys(it.fields).length > 0
-        ? it.fields
-        : { body: it.text };
+      it.fields && Object.keys(it.fields).length > 0 ? it.fields : { body: it.text };
 
     const fields: Bm25FFieldStats[] = [];
     let virtualLength = 0;
@@ -340,9 +336,7 @@ export function topKHybrid(
   const scored = index.docs.map((doc) => {
     const item = byId.get(doc.id);
     const bm = bm25FScore(qTokens, doc, index);
-    const cos = item
-      ? cosine(qVec, item.vector) * (0.5 + 0.5 * Math.min(1, item.weight))
-      : 0;
+    const cos = item ? cosine(qVec, item.vector) * (0.5 + 0.5 * Math.min(1, item.weight)) : 0;
     return { id: doc.id, text: doc.text, bm25: bm, cosine: cos };
   });
 

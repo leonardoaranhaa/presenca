@@ -44,10 +44,7 @@ export function speakBrowser(text: string, profile: VoiceProfile = DEFAULT_VOICE
  * Em produção isto deve ser um createServerFn que esconde a API key.
  * Retorna URL de áudio (blob) ou null se indisponível.
  */
-export async function speakElevenLabs(
-  text: string,
-  voiceId: string,
-): Promise<string | null> {
+export async function speakElevenLabs(text: string, voiceId: string): Promise<string | null> {
   try {
     const res = await fetch("/api/voice/tts", {
       method: "POST",

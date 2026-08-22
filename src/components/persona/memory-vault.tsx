@@ -122,8 +122,8 @@ export function MemoryVault({ persona }: { persona: Persona }) {
           <h2 className="font-display text-2xl">Cofre de memórias</h2>
           {persona.soul?.mimetic && (
             <p className="mt-1 text-xs text-accent">
-              Cérebro mímico · v{persona.soul.mimetic.version} · {persona.soul.mimetic.trainSteps} passos ·{" "}
-              {persona.soul.mimetic.traces.length} traços
+              Cérebro mímico · v{persona.soul.mimetic.version} · {persona.soul.mimetic.trainSteps}{" "}
+              passos · {persona.soul.mimetic.traces.length} traços
             </p>
           )}
           <p className="mt-1 text-sm text-muted">
@@ -180,7 +180,9 @@ export function MemoryVault({ persona }: { persona: Persona }) {
 
       <div className="space-y-3">
         {persona.memories.length === 0 && (
-          <p className="text-sm text-muted">O cofre ainda está vazio. Uma história já basta para começar.</p>
+          <p className="text-sm text-muted">
+            O cofre ainda está vazio. Uma história já basta para começar.
+          </p>
         )}
         {persona.memories.map((m) => (
           <Card key={m.id} className="flex gap-3 p-3">
@@ -250,7 +252,12 @@ export function MemoryVault({ persona }: { persona: Persona }) {
         </p>
       )}
 
-      <Button onClick={() => void awaken()} disabled={busy} variant="accent" className="w-full sm:w-auto">
+      <Button
+        onClick={() => void awaken()}
+        disabled={busy}
+        variant="accent"
+        className="w-full sm:w-auto"
+      >
         <Sparkles className="size-4" />
         {busy ? "Lendo as memórias…" : "Despertar presença"}
       </Button>

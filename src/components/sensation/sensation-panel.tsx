@@ -58,8 +58,8 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
         <div>
           <h2 className="font-display text-xl">Sensação</h2>
           <p className="mt-1 text-sm leading-relaxed text-muted">
-            Toques e abraços no corpo — telefone, controlo, VR ou traje háptico futuro.
-            Presenças memoriais só com o seu consentimento explícito.
+            Toques e abraços no corpo — telefone, controlo, VR ou traje háptico futuro. Presenças
+            memoriais só com o seu consentimento explícito.
           </p>
         </div>
       </div>
@@ -119,9 +119,7 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
             <input
               type="checkbox"
               checked={prefs.channels[key]}
-              onChange={(e) =>
-                save({ channels: { ...prefs.channels, [key]: e.target.checked } })
-              }
+              onChange={(e) => save({ channels: { ...prefs.channels, [key]: e.target.checked } })}
               className="size-4 accent-[var(--accent)]"
             />
             <Icon className="size-3.5 text-faint" />
@@ -137,12 +135,7 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
         <Button type="button" size="sm" variant="secondary" onClick={() => test("hug")}>
           Testar abraço
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => test("heartbeat")}
-        >
+        <Button type="button" size="sm" variant="outline" onClick={() => test("heartbeat")}>
           Testar conforto
         </Button>
       </div>

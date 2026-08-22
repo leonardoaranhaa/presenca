@@ -78,9 +78,8 @@ describe("MimeticBrain", () => {
 
   it("o resumo evolutivo muda quando chegam memórias", () => {
     const semMemoria = MimeticBrain.bootstrap(persona()).getModel().evolvingSummary;
-    const comMemoria = MimeticBrain.bootstrap(
-      persona({ memories: [memory()] }),
-    ).getModel().evolvingSummary;
+    const comMemoria = MimeticBrain.bootstrap(persona({ memories: [memory()] })).getModel()
+      .evolvingSummary;
     // Regressão: skillEvolve curto-circuitava e o resumo ficava congelado.
     expect(comMemoria).not.toBe(semMemoria);
     expect(comMemoria).toContain("A goiabeira");

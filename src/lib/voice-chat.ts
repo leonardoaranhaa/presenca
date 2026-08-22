@@ -6,15 +6,8 @@
  * Áudio espacial simples: volume por distância XZ (opcional).
  */
 
-import type {
-  PeerPose,
-  RealtimeMessage,
-  RealtimeTransport,
-  VoiceSignalPayload,
-} from "./realtime";
+import type { PeerPose, RealtimeMessage, RealtimeTransport, VoiceSignalPayload } from "./realtime";
 import { resolveIceServers } from "./ice-config";
-
-
 
 type PeerLink = {
   pc: RTCPeerConnection;
@@ -105,11 +98,7 @@ export class VoiceChat {
     }
   }
 
-  async start(opts: {
-    selfId: string;
-    placeId: string;
-    displayName: string;
-  }) {
+  async start(opts: { selfId: string; placeId: string; displayName: string }) {
     if (this.active) return;
     this.selfId = opts.selfId;
     this.placeId = opts.placeId;

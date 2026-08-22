@@ -30,8 +30,8 @@ function Home() {
           Ninguém se despede de todo.
         </h1>
         <p className="mt-6 max-w-lg text-base leading-relaxed text-muted md:text-lg">
-          Um mundo à semelhança da casa — para quem está longe e para quem já partiu. Você entra como
-          você. A memória, quando confiada, ganha voz. Não é milagre. É presença.
+          Um mundo à semelhança da casa — para quem está longe e para quem já partiu. Você entra
+          como você. A memória, quando confiada, ganha voz. Não é milagre. É presença.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg">
@@ -82,16 +82,17 @@ function Home() {
         <div>
           <h2 className="font-display text-3xl md:text-4xl">Uma reconstrução, não um retorno.</h2>
           <p className="mt-4 max-w-prose text-sm leading-relaxed text-muted md:text-base">
-            A voz que você ouve é feita das memórias que a família confia — o café das cinco, o caderno
-            de receitas, o jeito de chamar de meu bem. Ela não substitui o luto, não finge pulso, não
-            promete o impossível. Ajuda quem está distante a sentar de novo na mesma sala.
+            A voz que você ouve é feita das memórias que a família confia — o café das cinco, o
+            caderno de receitas, o jeito de chamar de meu bem. Ela não substitui o luto, não finge
+            pulso, não promete o impossível. Ajuda quem está distante a sentar de novo na mesma
+            sala.
           </p>
         </div>
         <Card className="p-5">
           <Smartphone className="size-5 text-linen" />
           <p className="mt-3 text-sm leading-relaxed text-muted">
-            No telefone: toque para entrar, joystick para andar, arraste para olhar. No computador: WASD
-            e o rato. No headset: modo VR, se o aparelho falar WebXR.
+            No telefone: toque para entrar, joystick para andar, arraste para olhar. No computador:
+            WASD e o rato. No headset: modo VR, se o aparelho falar WebXR.
           </p>
         </Card>
       </section>

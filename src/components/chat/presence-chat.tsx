@@ -13,7 +13,13 @@ import type { Persona } from "@/lib/types";
 import { cn, uid } from "@/lib/utils";
 import { speakPresence } from "@/lib/voice";
 
-export function PresenceChat({ persona, compact = false }: { persona: Persona; compact?: boolean }) {
+export function PresenceChat({
+  persona,
+  compact = false,
+}: {
+  persona: Persona;
+  compact?: boolean;
+}) {
   const messages = usePresence((s) => s.messages[persona.id] ?? []);
   const pushMessage = usePresence((s) => s.pushMessage);
   const [draft, setDraft] = useState("");
@@ -120,7 +126,10 @@ export function PresenceChat({ persona, compact = false }: { persona: Persona; c
           </p>
         )}
         {messages.map((m) => (
-          <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+          <div
+            key={m.id}
+            className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}
+          >
             <div
               className={cn(
                 "max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed",

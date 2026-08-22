@@ -1,9 +1,6 @@
 import * as THREE from "three";
 
-function canvasTex(
-  draw: (ctx: CanvasRenderingContext2D, size: number) => void,
-  size = 512,
-) {
+function canvasTex(draw: (ctx: CanvasRenderingContext2D, size: number) => void, size = 512) {
   const c = document.createElement("canvas");
   c.width = size;
   c.height = size;

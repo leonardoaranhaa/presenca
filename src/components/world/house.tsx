@@ -2,7 +2,12 @@ import { useLayoutEffect, useMemo } from "react";
 import * as THREE from "three";
 import { usePresence } from "@/lib/store";
 import { geoBox } from "./shared-geometries";
-import { makeGrassTexture, makePlasterTexture, makeStoneTexture, makeWoodTexture } from "./textures";
+import {
+  makeGrassTexture,
+  makePlasterTexture,
+  makeStoneTexture,
+  makeWoodTexture,
+} from "./textures";
 
 function Box({
   position,
@@ -101,7 +106,13 @@ export function House() {
       <Window position={[-11.55, 1.55, 0.6]} rotation={[0, -Math.PI / 2, 0]} />
 
       {/* Fireplace */}
-      <Box position={[0, 0.7, -6.55]} size={[2.4, 1.4, 0.7]} map={stone} color="#8a8378" castShadow={propsCast} />
+      <Box
+        position={[0, 0.7, -6.55]}
+        size={[2.4, 1.4, 0.7]}
+        map={stone}
+        color="#8a8378"
+        castShadow={propsCast}
+      />
       <Box position={[0, 2.1, -6.55]} size={[1.6, 1.4, 0.55]} map={stone} color="#7a746a" />
       <mesh position={[0, 0.55, -6.2]}>
         <boxGeometry args={[1.1, 0.7, 0.2]} />
@@ -115,7 +126,12 @@ export function House() {
       <pointLight position={[0, 0.7, -5.7]} color="#e0c4a0" intensity={1.6} distance={9} />
 
       {/* Sofa */}
-      <Box position={[0, 0.38, -2.4]} size={[3.4, 0.4, 1.2]} color="#5c5048" castShadow={propsCast} />
+      <Box
+        position={[0, 0.38, -2.4]}
+        size={[3.4, 0.4, 1.2]}
+        color="#5c5048"
+        castShadow={propsCast}
+      />
       <Box position={[0, 0.85, -2.85]} size={[3.4, 0.7, 0.28]} color="#4e443c" />
       <Box position={[-1.55, 0.7, -2.4]} size={[0.28, 0.55, 1.15]} color="#4e443c" />
       <Box position={[1.55, 0.7, -2.4]} size={[0.28, 0.55, 1.15]} color="#4e443c" />
@@ -210,13 +226,7 @@ function Garden() {
   );
 }
 
-function Tree({
-  position,
-  scale = 1,
-}: {
-  position: [number, number, number];
-  scale?: number;
-}) {
+function Tree({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
   return (
     <group position={position} scale={scale}>
       <mesh position={[0, 1.1, 0]} castShadow>

@@ -35,7 +35,7 @@ export function mapHumanoidBones(root: THREE.Object3D): BoneMap {
   });
 
   for (const bone of bones) {
-    const n = bone.name.replace(/[:\s\-]/g, "").toLowerCase();
+    const n = bone.name.replace(/[:\s-]/g, "").toLowerCase();
     for (const [role, aliases] of Object.entries(BONE_ALIASES) as [
       keyof typeof BONE_ALIASES,
       readonly string[],

@@ -72,7 +72,14 @@ export const SAMPLE_PLACES: Place[] = [
     ],
     anchors: [
       { id: "a_living", label: "Sofá", room: "living", x: 0, z: -2.4 },
-      { id: "a_kitchen", label: "Fogão", room: "kitchen", x: 8.9, z: -1.9, personaId: "persona_helena" },
+      {
+        id: "a_kitchen",
+        label: "Fogão",
+        room: "kitchen",
+        x: 8.9,
+        z: -1.9,
+        personaId: "persona_helena",
+      },
       {
         id: "a_garden",
         label: "Goiabeira",
@@ -115,7 +122,14 @@ export const SAMPLE_PLACES: Place[] = [
     visibility: "circle",
     personaIds: ["persona_antonio", "persona_helena"],
     anchors: [
-      { id: "s_tree", label: "Árvore grande", room: "garden", x: 2.4, z: 11.4, personaId: "persona_antonio" },
+      {
+        id: "s_tree",
+        label: "Árvore grande",
+        room: "garden",
+        x: 2.4,
+        z: 11.4,
+        personaId: "persona_antonio",
+      },
       { id: "s_porch", label: "Alpendre", room: "porch", x: 0, z: 5.6 },
     ],
     layout: "garden-only",
@@ -138,7 +152,8 @@ export const SAMPLE_PLACES: Place[] = [
       // Quando existir o arquivo:
       // glbUrl: "/scans/casa-web.glb",
       // colliderUrl: "/scans/casa-collider.glb",
-      notes: "Exporte GLB do Polycam/Scaniverse, otimize com gltf-transform, coloque em /public/scans/ e defina glbUrl.",
+      notes:
+        "Exporte GLB do Polycam/Scaniverse, otimize com gltf-transform, coloque em /public/scans/ e defina glbUrl.",
     },
     isSample: true,
   },

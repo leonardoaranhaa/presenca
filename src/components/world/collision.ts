@@ -122,7 +122,6 @@ export function setCollisionMode(
   }
 }
 
-
 /** Atualiza só a parte scan (quando o GLB termina de carregar). */
 export function setScanCollision(scan: ScanCollisionInput) {
   setCollisionMode("scan", undefined, scan);

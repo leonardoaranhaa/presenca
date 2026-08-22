@@ -30,7 +30,11 @@ export function MyBodyPanel() {
       return;
     }
     upsertPersona({ ...player!, bodyScan: scan });
-    setMsg(scan?.glbUrl ? "Corpo digital guardado. Entre no mundo para ver." : "Scan removido — volta a cápsula.");
+    setMsg(
+      scan?.glbUrl
+        ? "Corpo digital guardado. Entre no mundo para ver."
+        : "Scan removido — volta a cápsula.",
+    );
   }
 
   function onFile(file: File | null) {
@@ -142,10 +146,10 @@ export function MyBodyPanel() {
       <div className="space-y-2 border-t border-border/60 pt-3">
         <p className="text-sm font-medium">Rig automático (Mixamo)</p>
         <p className="text-xs text-muted leading-relaxed">
-          <strong className="text-foreground">Sem Mixamo:</strong> pack procedural (idle/walk/abraço)
-          por nomes de bones ou bob no mesh estático.{" "}
-          <strong className="text-foreground">Com Mixamo:</strong> clips Idle/Walk/Hug no AnimationMixer.
-          Debug: <code className="text-[10px]">window.__avatarAnimMode</code>
+          <strong className="text-foreground">Sem Mixamo:</strong> pack procedural
+          (idle/walk/abraço) por nomes de bones ou bob no mesh estático.{" "}
+          <strong className="text-foreground">Com Mixamo:</strong> clips Idle/Walk/Hug no
+          AnimationMixer. Debug: <code className="text-[10px]">window.__avatarAnimMode</code>
         </p>
         <label className="flex cursor-pointer items-center gap-2 text-sm">
           <input
@@ -168,8 +172,9 @@ export function MyBodyPanel() {
       </div>
 
       <p className="text-[11px] leading-relaxed text-faint">
-        Privacidade: o GLB fica no armazenamento local do browser (ou na URL que indicar). Não partilhe
-        scans de menores. O corpo digital é representação para o encontro — não identidade legal.
+        Privacidade: o GLB fica no armazenamento local do browser (ou na URL que indicar). Não
+        partilhe scans de menores. O corpo digital é representação para o encontro — não identidade
+        legal.
       </p>
     </Card>
   );

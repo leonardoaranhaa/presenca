@@ -306,9 +306,7 @@ export function createSocketTransport(wsUrlBuilder: (room: string) => string): R
     onMessage,
     listPeers() {
       const now = Date.now();
-      return [...peers.values()].filter(
-        (p) => p.peerId !== selfId && now - p.updatedAt < 15000,
-      );
+      return [...peers.values()].filter((p) => p.peerId !== selfId && now - p.updatedAt < 15000);
     },
   };
 }

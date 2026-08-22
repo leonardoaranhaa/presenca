@@ -114,12 +114,38 @@ export const ROOM_SPAWNS: Record<RoomId, { x: number; z: number }> = {
 };
 
 export const RELATIONSHIPS = [
-  "Avô", "Avó", "Pai", "Mãe", "Cônjuge", "Irmão", "Irmã",
-  "Filho", "Filha", "Tio", "Tia", "Primo", "Prima", "Amigo", "Amiga", "Outro",
+  "Avô",
+  "Avó",
+  "Pai",
+  "Mãe",
+  "Cônjuge",
+  "Irmão",
+  "Irmã",
+  "Filho",
+  "Filha",
+  "Tio",
+  "Tia",
+  "Primo",
+  "Prima",
+  "Amigo",
+  "Amiga",
+  "Outro",
 ];
 
 export const TRAIT_OPTIONS = [
-  "Paciente", "Humor seco", "Acolhedor", "Teimoso", "Sábio", "Quietude",
-  "Falante", "Protetor", "Brincalhão", "Devoto", "Curioso", "Rigoroso",
-  "Doce", "Sarcástico", "Generoso",
+  "Paciente",
+  "Humor seco",
+  "Acolhedor",
+  "Teimoso",
+  "Sábio",
+  "Quietude",
+  "Falante",
+  "Protetor",
+  "Brincalhão",
+  "Devoto",
+  "Curioso",
+  "Rigoroso",
+  "Doce",
+  "Sarcástico",
+  "Generoso",
 ];

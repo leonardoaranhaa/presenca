@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { getRealtimeTransport, usePresence } from "@/lib/store";
@@ -36,16 +36,13 @@ export function VoiceControls({ enabled }: { enabled: boolean }) {
     if (!enabled && state.active) void voice.stop();
   }, [enabled, state.active, voice]);
 
-  const activeRef = useRef(state.active);
-  activeRef.current = state.active;
-
   // Mudar de lugar cria um transporte novo; a sessão de voz ficaria presa ao
-  // antigo (sinalização a cair no vazio). Encerrar e deixar reentrar.
-  const prevPlace = useRef(placeId);
+  // antigo (sinalização a cair no vazio). A limpeza corre ao mudar de lugar e
+  // ao desmontar; `stop()` sai logo se não houver sessão activa.
   useEffect(() => {
-    if (prevPlace.current === placeId) return;
-    prevPlace.current = placeId;
-    if (activeRef.current) void voice.stop();
+    return () => {
+      void voice.stop();
+    };
   }, [placeId, voice]);
 
   if (!enabled) return null;

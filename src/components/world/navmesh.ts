@@ -80,11 +80,7 @@ function rasterizeRects(rects: Rect[], inset: number, cellSize: number): NavMesh
       const cx = x0 + (col + 0.5) * cellSize;
       const cz = z0 + (row + 0.5) * cellSize;
       const ok = rects.some(
-        (r) =>
-          cx >= r.x0 + inset &&
-          cx <= r.x1 - inset &&
-          cz >= r.z0 + inset &&
-          cz <= r.z1 - inset,
+        (r) => cx >= r.x0 + inset && cx <= r.x1 - inset && cz >= r.z0 + inset && cz <= r.z1 - inset,
       );
       if (ok) walkable[row * cols + col] = 1;
     }
@@ -380,7 +376,6 @@ export function stepNpcAgent(
   a.yaw = Math.atan2(-dx, -dz);
   return { x: a.x, z: a.z, yaw: a.yaw, moving: true };
 }
-
 
 /**
  * Avança ao longo do path. Retorna vetor de movimento desejado (não normalizado)
