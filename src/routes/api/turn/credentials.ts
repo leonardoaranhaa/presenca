@@ -3,11 +3,12 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { handleTurnCredentials } from "@/server/turn-http";
+import { comLog } from "@/server/log";
 
 export const Route = createFileRoute("/api/turn/credentials")({
   server: {
     handlers: {
-      GET: ({ request }) => handleTurnCredentials(request),
+      GET: ({ request }) => comLog("turn", request, () => handleTurnCredentials(request)),
     },
   },
 });
