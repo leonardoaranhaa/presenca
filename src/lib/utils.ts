@@ -9,11 +9,7 @@ export function uid(prefix = "id") {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
 }
 
-export function compressImage(
-  file: File,
-  maxSize = 720,
-  quality = 0.72,
-): Promise<string> {
+export function compressImage(file: File, maxSize = 720, quality = 0.72): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);

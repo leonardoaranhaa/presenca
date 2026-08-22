@@ -28,7 +28,7 @@ juntas nunca foram testadas.
 `lib/ai.ts` lia `process.env.XAI_API_KEY` e chamava `api.x.ai`, mas era
 importado por `presence-chat.tsx` e `memory-vault.tsx`, que correm no browser.
 No browser `process` é `undefined`, portanto a função devolvia sempre
-*"A voz da presença não está disponível neste ambiente"*. A funcionalidade
+_"A voz da presença não está disponível neste ambiente"_. A funcionalidade
 central da app estava morta — e se algum bundler fizesse shim de `process.env`,
 a chave da API ia para o bundle do cliente.
 
@@ -46,7 +46,7 @@ de propósito, só para `publishPose` a poder ler.
 
 **3. Metade das ligações de voz nunca estabelecia.**
 Só quem entrava difundia `voice-join`. Quem já estava na sala criava a ligação,
-mas o papel vinha de `selfId < peerId` e o lado *polite* esperava por uma oferta
+mas o papel vinha de `selfId < peerId` e o lado _polite_ esperava por uma oferta
 que nunca chegava — quem acabara de entrar nem sabia que aquele peer existia.
 
 **4. O cérebro mimético corrompia a persona.**
@@ -59,23 +59,23 @@ um `||` curto-circuitava e o resumo ficava congelado depois da primeira memória
 
 ## 2. Feito nesta passagem
 
-| # | Área | Correção |
-|---|------|----------|
-| 1 | Build | `vite.config.ts`, routeTree gerado, `@types/node`, `noUnusedLocals`, plugin-react 6 (peer do Vite 8) |
-| 2 | Tipos | 20 erros de `tsc`, incluindo 5 `useEffect` que devolviam `boolean` (`Set.delete`) e o `<line>` que resolvia para `SVGLineElement` |
-| 3 | **Arquitetura** | `lib/ai.ts` → `server/ai.ts`; rotas `/api/chat` e `/api/awaken`; `lib/ai-client.ts` para o browser; `lib/voice-api.ts` removido |
-| 4 | **Arquitetura** | As 5 rotas de API convertidas para `createFileRoute` + `server.handlers` — agora existem em runtime |
-| 5 | Performance | `qualityProfile` memoizado; `publishPose(pose)` por argumento; `experience` deixa de subscrever a pose |
-| 6 | Voz | `voice-here` no protocolo; perfect negotiation com rollback; sem oferta duplicada; sem `RTCPeerConnection` duplicada |
-| 7 | PartyKit | Reescrito sobre `Party.Server`; `voice` no tipo `Msg`; entrega dirigida; limpeza de peers mortos |
-| 8 | Cérebro | Bordões só de memórias e da própria presença; `topKHybrid` deixa de ser O(n²); resumo derivado e limitado |
-| 9 | Persistência | Vetores não persistidos (82% do peso, funções puras do texto): 1,21 MB → 0,21 MB com 4 personas |
-| 10 | Persistência | Quota estourada deixa de falhar em silêncio (`isStorageFull()`) |
-| 11 | **Segurança** | `/api/turn/credentials` era `Access-Control-Allow-Origin: *` sem verificação — relay aberto ao mundo. Agora same-origin |
-| 12 | Comportamento | Persona mais próxima medida contra a posição viva, não o spawn; `approach` deixa de ser sempre verdadeiro |
-| 13 | Fugas | Object URL do TTS, subscrição do transporte, `srcObject` dos peers |
-| 14 | Completado | Gestos faciais chegam ao traje como regiões do rosto; nomes dos peers renderizados; `preferredCheek: "both"` |
-| 15 | Testes | 50 casos (vitest), incluindo um guarda do limite servidor/cliente que falha se a regressão #3 voltar |
+| #   | Área            | Correção                                                                                                                          |
+| --- | --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Build           | `vite.config.ts`, routeTree gerado, `@types/node`, `noUnusedLocals`, plugin-react 6 (peer do Vite 8)                              |
+| 2   | Tipos           | 20 erros de `tsc`, incluindo 5 `useEffect` que devolviam `boolean` (`Set.delete`) e o `<line>` que resolvia para `SVGLineElement` |
+| 3   | **Arquitetura** | `lib/ai.ts` → `server/ai.ts`; rotas `/api/chat` e `/api/awaken`; `lib/ai-client.ts` para o browser; `lib/voice-api.ts` removido   |
+| 4   | **Arquitetura** | As 5 rotas de API convertidas para `createFileRoute` + `server.handlers` — agora existem em runtime                               |
+| 5   | Performance     | `qualityProfile` memoizado; `publishPose(pose)` por argumento; `experience` deixa de subscrever a pose                            |
+| 6   | Voz             | `voice-here` no protocolo; perfect negotiation com rollback; sem oferta duplicada; sem `RTCPeerConnection` duplicada              |
+| 7   | PartyKit        | Reescrito sobre `Party.Server`; `voice` no tipo `Msg`; entrega dirigida; limpeza de peers mortos                                  |
+| 8   | Cérebro         | Bordões só de memórias e da própria presença; `topKHybrid` deixa de ser O(n²); resumo derivado e limitado                         |
+| 9   | Persistência    | Vetores não persistidos (82% do peso, funções puras do texto): 1,21 MB → 0,21 MB com 4 personas                                   |
+| 10  | Persistência    | Quota estourada deixa de falhar em silêncio (`isStorageFull()`)                                                                   |
+| 11  | **Segurança**   | `/api/turn/credentials` era `Access-Control-Allow-Origin: *` sem verificação — relay aberto ao mundo. Agora same-origin           |
+| 12  | Comportamento   | Persona mais próxima medida contra a posição viva, não o spawn; `approach` deixa de ser sempre verdadeiro                         |
+| 13  | Fugas           | Object URL do TTS, subscrição do transporte, `srcObject` dos peers                                                                |
+| 14  | Completado      | Gestos faciais chegam ao traje como regiões do rosto; nomes dos peers renderizados; `preferredCheek: "both"`                      |
+| 15  | Testes          | 50 casos (vitest), incluindo um guarda do limite servidor/cliente que falha se a regressão #3 voltar                              |
 
 Estado: `npm run typecheck` limpo · `npm test` 50/50 · `npm run build` ok ·
 `/api/*` verificado com o servidor a correr (200 no TURN, 503 sem chave de IA,
@@ -114,7 +114,7 @@ e verificar que `/api/*` responde em produção, não só em dev.
 
 **3.5 · Um "lar" que sobrevive ao dispositivo.**
 Hoje tudo é local-first, o que é uma boa escolha de privacidade e a escolha
-errada para a promessa do produto: *a família continua junta*. Limpar os dados
+errada para a promessa do produto: _a família continua junta_. Limpar os dados
 do browser apaga o avô. E duas pessoas da mesma família, em telefones
 diferentes, não veem o mesmo lar — só se cruzam em tempo real se estiverem
 ligadas ao mesmo tempo.
@@ -127,7 +127,7 @@ com dados a sério.
 **3.6 · Recuperação semântica a sério.**
 O BM25F está bem feito e é honesto. O "vetor" é que não: 64 dimensões com hash
 FNV colide muito, e o cosseno sobre isso acrescenta pouco ao BM25F — é ranking
-lexical com um nome mais ambicioso. Perguntar *"ele gostava de plantas?"* não
+lexical com um nome mais ambicioso. Perguntar _"ele gostava de plantas?"_ não
 recupera a memória da goiabeira, porque nenhuma palavra coincide. Um modelo de
 embeddings pequeno via `transformers.js` mantém tudo local e resolve isto.
 

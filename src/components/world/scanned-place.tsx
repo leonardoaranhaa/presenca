@@ -25,11 +25,7 @@ export function ScannedPlace({ scan, metrics, scale = 1 }: Props) {
   }
   return (
     <Suspense fallback={<SimpleRoom metrics={metrics ?? DEFAULT_METRICS} />}>
-      <ScannedGlb
-        url={url}
-        colliderUrl={scan?.colliderUrl}
-        scale={scale}
-      />
+      <ScannedGlb url={url} colliderUrl={scan?.colliderUrl} scale={scale} />
     </Suspense>
   );
 }

@@ -58,7 +58,8 @@ export function WorldHud({
             Entrar
           </Button>
           <p className="mt-3 text-center text-xs text-faint">
-            WASD ou clique no chão (caminho no chão). Presenças aproximam-se quando você chega perto. Telefone: joystick.
+            WASD ou clique no chão (caminho no chão). Presenças aproximam-se quando você chega
+            perto. Telefone: joystick.
           </p>
         </div>
       )}

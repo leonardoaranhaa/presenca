@@ -85,9 +85,7 @@ function restoreVectors(p: Persona): Persona {
       ...p.soul!,
       mimetic: {
         ...p.soul!.mimetic!,
-        traces: traces.map((t) =>
-          t.vector?.length ? t : { ...t, vector: embedText(t.text) },
-        ),
+        traces: traces.map((t) => (t.vector?.length ? t : { ...t, vector: embedText(t.text) })),
       },
     },
   };
@@ -120,10 +118,7 @@ const quotaAwareStorage: Storage = {
       quotaExceeded = false;
     } catch (e) {
       quotaExceeded = true;
-      console.error(
-        "[presenca] armazenamento local cheio — memórias novas não foram guardadas",
-        e,
-      );
+      console.error("[presenca] armazenamento local cheio — memórias novas não foram guardadas", e);
     }
   },
 };
@@ -210,9 +205,7 @@ export const usePresence = create<State>()(
       },
       removeMemory: (personaId, memoryId) => {
         const personas = get().personas.map((p) =>
-          p.id === personaId
-            ? { ...p, memories: p.memories.filter((m) => m.id !== memoryId) }
-            : p,
+          p.id === personaId ? { ...p, memories: p.memories.filter((m) => m.id !== memoryId) } : p,
         );
         set({ personas: withPrompts(personas) });
       },

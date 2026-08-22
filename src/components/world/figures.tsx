@@ -5,18 +5,9 @@ import * as THREE from "three";
 import { usePresence } from "@/lib/store";
 import { AVATAR_HUES, ROOM_SPAWNS, type Persona } from "@/lib/types";
 import type { PeerPose } from "@/lib/realtime";
-import {
-  onSensationEvent,
-  type SensationEvent,
-  type SensationGesture,
-} from "@/lib/sensation";
+import { onSensationEvent, type SensationEvent, type SensationGesture } from "@/lib/sensation";
 import { geoCapsule, geoSphere, geoSphereSm } from "./shared-geometries";
-import {
-  ensureNpcAgent,
-  getNavMesh,
-  setNpcDestination,
-  stepNpcAgent,
-} from "./navmesh";
+import { ensureNpcAgent, getNavMesh, setNpcDestination, stepNpcAgent } from "./navmesh";
 import { PlayerBody } from "./player-avatar";
 
 const NPC_SPEED = 1.15;
@@ -162,7 +153,14 @@ export function Figure({
     }
 
     // Háptica facial → brilho local no rosto
-    const faceGestures = ["cheek_kiss", "forehead_touch", "cheek_caress", "temple_press", "nose_boop", "farewell_cheek"];
+    const faceGestures = [
+      "cheek_kiss",
+      "forehead_touch",
+      "cheek_caress",
+      "temple_press",
+      "nose_boop",
+      "farewell_cheek",
+    ];
     if (gType && faceGestures.includes(gType) && gAmt > 0) {
       const side = gesturePose?.current?.facialSide ?? "right";
       const glow = 0.35 + 0.65 * gAmt;
@@ -199,7 +197,6 @@ export function Figure({
       if (rightCheek.current) rightCheek.current.visible = false;
       if (forehead.current) forehead.current.visible = false;
     }
-
   });
 
   return (
@@ -373,7 +370,6 @@ export function PeerFigures({ peers }: { peers: PeerPose[] }) {
   );
 }
 
-
 function usePersonaGesture(personaId: string) {
   const pose = useRef<GesturePose>(emptyGesture());
   useEffect(() => {
@@ -425,8 +421,7 @@ function WalkingNpc({
 
     // Durante abraço, para de andar
     const hugging =
-      gesturePose.current.gesture === "hug" &&
-      performance.now() < gesturePose.current.until;
+      gesturePose.current.gesture === "hug" && performance.now() < gesturePose.current.until;
 
     if (approach && getNavMesh() && !hugging) {
       const dist = Math.hypot(playerPos.x - agent.x, playerPos.z - agent.z);
@@ -445,11 +440,7 @@ function WalkingNpc({
       }
     }
 
-    const step = stepNpcAgent(
-      persona.id,
-      talking ? NPC_SPEED * 0.7 : NPC_SPEED,
-      clamped,
-    );
+    const step = stepNpcAgent(persona.id, talking ? NPC_SPEED * 0.7 : NPC_SPEED, clamped);
     if (step) {
       livePos.current.set(step.x, 0, step.z);
       liveYaw.current = step.yaw;
@@ -527,10 +518,7 @@ export function FamilyFigures({
   talkingId: string | null;
   onSelect: (id: string) => void;
 }) {
-  const others = useMemo(
-    () => personas.filter((p) => p.id !== playerId),
-    [personas, playerId],
-  );
+  const others = useMemo(() => personas.filter((p) => p.id !== playerId), [personas, playerId]);
   const player = personas.find((p) => p.id === playerId);
 
   return (
@@ -556,21 +544,12 @@ export function FamilyFigures({
           />
         );
       })}
-      {player && (
-        player.bodyScan?.glbUrl ? (
-          <PlayerBody
-            persona={player}
-            playerPos={playerPos}
-            playerYaw={playerYaw}
-          />
+      {player &&
+        (player.bodyScan?.glbUrl ? (
+          <PlayerBody persona={player} playerPos={playerPos} playerYaw={playerYaw} />
         ) : (
-          <PlayerWithGesture
-            persona={player}
-            playerPos={playerPos}
-            playerYaw={playerYaw}
-          />
-        )
-      )}
+          <PlayerWithGesture persona={player} playerPos={playerPos} playerYaw={playerYaw} />
+        ))}
     </>
   );
 }

@@ -186,9 +186,7 @@ export function acceptPolicy() {
 }
 
 export function hasValidPolicyAcceptance(p: PrivacyPrefs = loadPrivacyPrefs()) {
-  return (
-    !!p.acceptedPolicyAt && p.acceptedPolicyVersion === POLICY_VERSION
-  );
+  return !!p.acceptedPolicyAt && p.acceptedPolicyVersion === POLICY_VERSION;
 }
 
 /** Texto curto para UI — o jurídico pode substituir por PDF oficial. */

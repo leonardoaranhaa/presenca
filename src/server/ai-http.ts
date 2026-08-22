@@ -2,12 +2,7 @@
  * Adaptadores HTTP para /api/chat e /api/awaken.
  * Validação com zod: o corpo vem do browser e não é de confiança.
  */
-import {
-  awakenInputSchema,
-  awakenPresence,
-  chatInputSchema,
-  chatWithPresence,
-} from "./ai";
+import { awakenInputSchema, awakenPresence, chatInputSchema, chatWithPresence } from "./ai";
 
 function badRequest(message: string) {
   return Response.json({ error: message }, { status: 400 });

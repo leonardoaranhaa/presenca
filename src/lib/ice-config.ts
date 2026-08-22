@@ -34,17 +34,20 @@ const DEFAULT_STUN: RTCIceServer[] = [
 export function loadIceConfig(): IceStoredConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { enabled: true, turnUrls: "", username: "", credential: "", ...JSON.parse(raw) };
+    if (raw)
+      return { enabled: true, turnUrls: "", username: "", credential: "", ...JSON.parse(raw) };
   } catch {
     /* ignore */
   }
-  const env = (import.meta as unknown as {
-    env?: {
-      VITE_TURN_URLS?: string;
-      VITE_TURN_USERNAME?: string;
-      VITE_TURN_CREDENTIAL?: string;
-    };
-  }).env;
+  const env = (
+    import.meta as unknown as {
+      env?: {
+        VITE_TURN_URLS?: string;
+        VITE_TURN_USERNAME?: string;
+        VITE_TURN_CREDENTIAL?: string;
+      };
+    }
+  ).env;
   if (env?.VITE_TURN_URLS) {
     return {
       enabled: true,
@@ -121,7 +124,6 @@ TURN — guia rápido
 Sem TURN: STUN Google ainda funciona em muitos NATs caseiros.
 Com TURN: redes móveis / corporativas passam a conectar.
 `;
-
 
 export type ApiTurnResponse = {
   iceServers: RTCIceServer[];

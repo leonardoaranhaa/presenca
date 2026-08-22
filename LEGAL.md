@@ -13,23 +13,23 @@ Documento operacional. **Não substitui parecer jurídico.**
 
 ## Direitos do titular (art. 18 LGPD)
 
-| Direito | Implementação atual |
-|---------|---------------------|
-| Acesso / portabilidade | Exportar JSON local |
-| Eliminação | Apagar dados locais |
-| Revogação de consentimento | Toggles de privacidade |
-| Informação | Aviso + inventário na UI |
+| Direito                    | Implementação atual      |
+| -------------------------- | ------------------------ |
+| Acesso / portabilidade     | Exportar JSON local      |
+| Eliminação                 | Apagar dados locais      |
+| Revogação de consentimento | Toggles de privacidade   |
+| Informação                 | Aviso + inventário na UI |
 
 ## Impasses futuros — mudanças mínimas
 
-| Pedido jurídico | Onde mudar |
-|-----------------|------------|
-| Novo texto de política | `PRIVACY_NOTICE_SHORT` + `POLICY_VERSION` |
-| Desligar clone de voz | default `allowVoiceClone: false` (já) |
-| Proibir scan de menores | validação na UI de body + termos |
-| Retenção máxima de chat | limpar `messages` por idade no store |
-| Base legal diferente | campo `basis` no inventário |
-| DPO / canal de contacto | acrescentar email no painel |
+| Pedido jurídico         | Onde mudar                                |
+| ----------------------- | ----------------------------------------- |
+| Novo texto de política  | `PRIVACY_NOTICE_SHORT` + `POLICY_VERSION` |
+| Desligar clone de voz   | default `allowVoiceClone: false` (já)     |
+| Proibir scan de menores | validação na UI de body + termos          |
+| Retenção máxima de chat | limpar `messages` por idade no store      |
+| Base legal diferente    | campo `basis` no inventário               |
+| DPO / canal de contacto | acrescentar email no painel               |
 
 ## Presença mímica (conceito)
 

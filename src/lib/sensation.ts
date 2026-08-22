@@ -63,13 +63,7 @@ export type SensationEvent = {
 };
 
 export type SuitRegion =
-  | "chest"
-  | "back"
-  | "left_arm"
-  | "right_arm"
-  | "left_hand"
-  | "right_hand"
-  | "shoulders";
+  "chest" | "back" | "left_arm" | "right_arm" | "left_hand" | "right_hand" | "shoulders";
 
 /** Padrão por região do traje (0–1 por frame de 50ms). */
 export type SuitPattern = {
@@ -104,10 +98,7 @@ const GESTURE_DEFAULTS: Record<
 };
 
 /** Mapa gesto → pressão por região do traje (futuro). */
-export function suitPatternFor(
-  gesture: SensationGesture,
-  intensity: number,
-): SuitPattern {
+export function suitPatternFor(gesture: SensationGesture, intensity: number): SuitPattern {
   const i = Math.max(0, Math.min(1, intensity));
   const frameMs = 50;
   const pulse = (n: number, peak: number) =>
@@ -142,10 +133,7 @@ export function suitPatternFor(
       return {
         frameMs,
         regions: {
-          chest: [0.5 * i, 0.15, 0.35 * i, 0.05, 0, 0, 0, 0].flatMap((v) => [
-            v,
-            v * 0.6,
-          ]),
+          chest: [0.5 * i, 0.15, 0.35 * i, 0.05, 0, 0, 0, 0].flatMap((v) => [v, v * 0.6]),
         },
       };
     case "presence":
@@ -334,10 +322,8 @@ async function vibrateXr(intensity: number, durationMs: number) {
     const sources = session.inputSources || [];
     let ok = false;
     for (const src of sources) {
-      const actuator = (src as unknown as { gamepad?: Gamepad }).gamepad
-        ?.hapticActuators?.[0] as
-        | { pulse?: (value: number, duration: number) => Promise<boolean> }
-        | undefined;
+      const actuator = (src as unknown as { gamepad?: Gamepad }).gamepad?.hapticActuators?.[0] as
+        { pulse?: (value: number, duration: number) => Promise<boolean> } | undefined;
       if (actuator?.pulse) {
         await actuator.pulse(intensity, durationMs);
         ok = true;
@@ -348,7 +334,6 @@ async function vibrateXr(intensity: number, durationMs: number) {
     return false;
   }
 }
-
 
 /** Contexto opcional para abraço adaptativo. */
 export type HugContext = {
@@ -362,7 +347,8 @@ export type HugContext = {
   yearsSince?: number;
 };
 
-const CLOSE_REL = /pai|mãe|mae|filho|filha|irmão|irmao|irmã|irma|av[oô]|avó|amor|espos|marido|companheir|namor/i;
+const CLOSE_REL =
+  /pai|mãe|mae|filho|filha|irmão|irmao|irmã|irma|av[oô]|avó|amor|espos|marido|companheir|namor/i;
 const WARM_REL = /tio|tia|primo|prima|amigo|amiga|padrinho|madrinha|neto|neta/i;
 const FIRM_TRAIT = /forte|protetor|protetora|r[ií]gido|determinado|guerreiro/i;
 const SOFT_TRAIT = /carinhos|gentil|suave|calmo|calma|doce|afetuoso/i;
@@ -526,8 +512,7 @@ export async function playSensation(input: {
 
   const channels: SensationChannel[] = [];
   const phonePattern =
-    input.phonePattern ??
-    base.phonePattern.map((ms) => Math.round(ms * (0.6 + intensity * 0.6)));
+    input.phonePattern ?? base.phonePattern.map((ms) => Math.round(ms * (0.6 + intensity * 0.6)));
 
   if (prefs.channels.phone && (await vibratePhone(phonePattern))) {
     channels.push("phone");
@@ -591,12 +576,7 @@ export const Sensation = {
       personaName: name,
       sourceKind: kind,
     }),
-  hug: (
-    personaId: string,
-    name: string,
-    kind: "memorial" | "living",
-    ctx?: HugContext,
-  ) => {
+  hug: (personaId: string, name: string, kind: "memorial" | "living", ctx?: HugContext) => {
     const adaptive = resolveAdaptiveHug(kind, ctx);
     return playSensation({
       gesture: "hug",
@@ -658,7 +638,6 @@ export const Sensation = {
   },
 };
 
-
 /** Protocolo documentado para firmware do traje (JSON sobre WS/BLE). */
 export const SUIT_PROTOCOL_DOC = `
 Presença Suit Protocol v0.1
@@ -689,7 +668,6 @@ Suit → Client:
 
 Safety: firmware deve limitar pressão máxima e temperatura; o app envia só intenções.
 `;
-
 
 export {
   suggestFacialGesture,

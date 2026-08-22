@@ -22,11 +22,7 @@ type Err = { ok: false; error: string };
 const OFFLINE =
   "A presença não está disponível agora. A conversa fica guardada e pode tentar de novo.";
 
-async function postJson<T>(
-  url: string,
-  body: unknown,
-  signal?: AbortSignal,
-): Promise<Ok<T> | Err> {
+async function postJson<T>(url: string, body: unknown, signal?: AbortSignal): Promise<Ok<T> | Err> {
   let res: Response;
   try {
     res = await fetch(url, {
@@ -39,9 +35,7 @@ async function postJson<T>(
     return { ok: false, error: OFFLINE };
   }
 
-  const data = (await res.json().catch(() => null)) as
-    | (T & { error?: string })
-    | null;
+  const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
 
   if (!res.ok) {
     return { ok: false, error: data?.error ?? OFFLINE };

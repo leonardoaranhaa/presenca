@@ -34,7 +34,11 @@ function dataUrlToBlob(dataUrl: string): { blob: Blob; name: string } | null {
   if (!m) return null;
   const mime = m[1];
   const bin = Buffer.from(m[2], "base64");
-  const ext = mime.includes("wav") ? "wav" : mime.includes("mpeg") || mime.includes("mp3") ? "mp3" : "webm";
+  const ext = mime.includes("wav")
+    ? "wav"
+    : mime.includes("mpeg") || mime.includes("mp3")
+      ? "mp3"
+      : "webm";
   return { blob: new Blob([bin], { type: mime }), name: `sample.${ext}` };
 }
 
@@ -105,7 +109,10 @@ export async function cloneVoice(
 /** Text-to-speech com voice_id clonado. Retorna bytes de áudio MPEG. */
 export async function synthesizeSpeech(
   body: TtsBody,
-): Promise<{ ok: true; audio: ArrayBuffer; contentType: string } | { ok: false; error: string; status?: number }> {
+): Promise<
+  | { ok: true; audio: ArrayBuffer; contentType: string }
+  | { ok: false; error: string; status?: number }
+> {
   const key = apiKey();
   if (!key) {
     return { ok: false, error: "ELEVENLABS_API_KEY não configurada.", status: 503 };

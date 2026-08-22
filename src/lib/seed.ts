@@ -176,9 +176,7 @@ export const SAMPLE_FAMILY: Persona[] = [
 ];
 
 export function buildSystemPrompt(p: Persona): string {
-  const memoryBlock = p.memories
-    .map((m) => `[${m.kind}] ${m.title}: ${m.body}`)
-    .join("\n");
+  const memoryBlock = p.memories.map((m) => `[${m.kind}] ${m.title}: ${m.body}`).join("\n");
   const soul = p.soul;
   return [
     `Você dá voz a uma presença mímica de ${p.name} (${p.relationship}) — imita o jeito e as memórias confiadas, sem ser a pessoa real.`,

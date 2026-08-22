@@ -79,7 +79,8 @@ function PlacesPage() {
               <p className="mt-2 text-xs text-faint">{layoutLabel(place.layout)}</p>
               {place.metrics && place.layout === "simple-room" && (
                 <p className="text-xs text-faint">
-                  {place.metrics.widthM}×{place.metrics.depthM} m · pé-direito {place.metrics.heightM} m
+                  {place.metrics.widthM}×{place.metrics.depthM} m · pé-direito{" "}
+                  {place.metrics.heightM} m
                 </p>
               )}
               <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-faint">
@@ -112,7 +113,12 @@ function PlacesPage() {
         })}
       </div>
 
-      <NewSimpleRoom onCreate={upsertPlace} onEnter={(id) => { setActivePlace(id); }} />
+      <NewSimpleRoom
+        onCreate={upsertPlace}
+        onEnter={(id) => {
+          setActivePlace(id);
+        }}
+      />
       <AttachScanGlb />
       <PhotogrammetryGuide />
 
@@ -134,7 +140,8 @@ function PlacesPage() {
         <h2 className="font-display text-xl">Interconexão</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">
           Canal local (BroadcastChannel) entre abas. Próximo passo: PartyKit / WebSocket no mesmo
-          contrato <code className="text-xs">RealtimeTransport</code> em <code className="text-xs">lib/realtime.ts</code>.
+          contrato <code className="text-xs">RealtimeTransport</code> em{" "}
+          <code className="text-xs">lib/realtime.ts</code>.
         </p>
       </Card>
     </Shell>
@@ -182,8 +189,8 @@ function NewSimpleRoom({
         <h2 className="font-display text-xl">Novo cômodo por medidas</h2>
       </div>
       <p className="text-sm text-muted">
-        Meça largura, profundidade e pé-direito com uma trena. O mundo gera paredes, porta e janelas —
-        útil antes do scan 3D ou para lugares aproximados.
+        Meça largura, profundidade e pé-direito com uma trena. O mundo gera paredes, porta e janelas
+        — útil antes do scan 3D ou para lugares aproximados.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
@@ -226,7 +233,6 @@ function NewSimpleRoom({
   );
 }
 
-
 function AttachScanGlb() {
   const places = usePresence((s) => s.places);
   const upsertPlace = usePresence((s) => s.upsertPlace);
@@ -240,7 +246,8 @@ function AttachScanGlb() {
     <Card className="mt-6 space-y-3 p-5">
       <h2 className="font-display text-xl">Anexar GLB ao lugar scan</h2>
       <p className="text-sm text-muted">
-        Depois de colocar o arquivo em <code className="text-xs">public/scans/</code>, informe a URL pública.
+        Depois de colocar o arquivo em <code className="text-xs">public/scans/</code>, informe a URL
+        pública.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -251,13 +258,19 @@ function AttachScanGlb() {
             onChange={(e) => setPlaceId(e.target.value)}
           >
             {scanPlaces.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
             ))}
           </select>
         </div>
         <div className="space-y-1.5">
           <Label>URL do GLB</Label>
-          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="/scans/casa-web.glb" />
+          <Input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="/scans/casa-web.glb"
+          />
         </div>
       </div>
       <Button
@@ -293,7 +306,9 @@ function PhotogrammetryGuide() {
           Capture com <strong className="text-foreground">Polycam</strong> ou{" "}
           <strong className="text-foreground">Scaniverse</strong> (LiDAR no iPhone Pro ajuda).
         </li>
-        <li>Exporte <strong className="text-foreground">GLB / glTF</strong>.</li>
+        <li>
+          Exporte <strong className="text-foreground">GLB / glTF</strong>.
+        </li>
         <li>
           Otimize:{" "}
           <code className="text-xs text-foreground">
@@ -302,14 +317,16 @@ function PhotogrammetryGuide() {
         </li>
         <li>
           Coloque em <code className="text-xs">public/scans/</code> e preencha{" "}
-          <code className="text-xs">place.scan.glbUrl</code> (layout <code className="text-xs">scan-glb</code>).
+          <code className="text-xs">place.scan.glbUrl</code> (layout{" "}
+          <code className="text-xs">scan-glb</code>).
         </li>
         <li>
           Até o GLB existir, o lugar “Casa escaneada (demo)” usa o cômodo por medidas como fallback.
         </li>
       </ol>
       <p className="text-xs text-faint">
-        Splat (Gaussian) é ótimo para ver; para andar e ancorar presenças use mesh + collider. Ver README.
+        Splat (Gaussian) é ótimo para ver; para andar e ancorar presenças use mesh + collider. Ver
+        README.
       </p>
     </Card>
   );
