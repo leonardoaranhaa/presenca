@@ -91,11 +91,17 @@ export function PresenceChat({ persona, compact = false }: { persona: Persona; c
   }
 
   function speak(text: string) {
-    void speakPresence(text, persona.voiceProfile ?? {
-      provider: "browser",
-      rate: persona.kind === "memorial" ? 0.92 : 1,
-      pitch: persona.hue === "rose" || persona.hair === "long" || persona.hair === "bun" ? 1.15 : 0.85,
-    });
+    // Sem voiceProfile explícito, só o ritmo muda (memorial fala mais devagar).
+    // A versão anterior deduzia o tom a partir do penteado e da cor da roupa
+    // — o aspeto do avatar não diz nada sobre a voz de quem partiu, e essa
+    // escolha pertence a quem a conheceu, no cofre de voz.
+    void speakPresence(
+      text,
+      persona.voiceProfile ?? {
+        provider: "browser",
+        rate: persona.kind === "memorial" ? 0.92 : 1,
+      },
+    );
   }
 
   return (

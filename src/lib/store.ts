@@ -129,6 +129,7 @@ const quotaAwareStorage: Storage = {
 };
 
 let transport: RealtimeTransport | null = null;
+let unsubscribeTransport: (() => void) | null = null;
 
 export function getRealtimeTransport() {
   return transport;
@@ -290,12 +291,16 @@ export const usePresence = create<State>()(
           updatedAt: Date.now(),
         };
         transport.connect(s.activePlaceId, self);
-        transport.onMessage(() => {
+        // A subscrição anterior era descartada: cada reconexão empilhava mais
+        // um handler sobre o transporte antigo.
+        unsubscribeTransport = transport.onMessage(() => {
           set({ peers: transport?.listPeers() ?? [] });
         });
         set({ peers: [] });
       },
       disconnectPlace: () => {
+        unsubscribeTransport?.();
+        unsubscribeTransport = null;
         transport?.disconnect();
         transport = null;
         set({ peers: [] });

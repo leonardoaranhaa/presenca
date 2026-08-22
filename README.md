@@ -1,186 +1,149 @@
-## Cérebro mímico
+# Presença
 
-- `src/lib/mimetic-brain/` — skills + orquestração + memória ML local
-- Absorve memórias e chat; recupera traços com **BM25F (campos) + hybrid** lexical; evolui resumo/traços
-- É **mímica**, não a pessoa (ver `ETHICAL_GUARDRAILS`)
-- Exemplo: `src/lib/mimetic-brain/example-bm25f.ts` (`exampleBm25FSearch`, `exampleMimeticPipeline`)
+O lar virtual onde a família continua junta — vivos, lugares reais e memoriais.
+
+A presença é **mímica**: imita o jeito, a voz e as memórias que a família confia.
+Não é a pessoa, não finge ser, e diz isso quando lhe perguntam. Ver [LEGAL.md](LEGAL.md)
+e `src/lib/ethics.ts`.
+
+## Começar
+
+```bash
+npm install
+cp .env.example .env   # opcional: sem chaves a app corre em modo degradado
+npm run dev            # http://localhost:8080
+```
+
+| Comando | O que faz |
+|---------|-----------|
+| `npm run dev` | Servidor de desenvolvimento (porta 8080) |
+| `npm run build` | Build de produção (cliente + SSR) |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Testes (vitest) |
+| `npm run party:dev` | Servidor PartyKit local |
+| `npm run party:deploy` | Publicar o PartyKit |
+
+Sem `XAI_API_KEY` a app arranca e navega-se pelo mundo; a conversa responde 503 e
+a UI avisa. Sem `ELEVENLABS_API_KEY` a presença fala pelo leitor do aparelho.
+Sem TURN, o WebRTC usa só STUN — chega para a maioria das redes domésticas.
+
+## Arquitetura
+
+```
+src/
+  routes/          Rotas de página + rotas de API (TanStack Start)
+    api/           /api/chat, /api/awaken, /api/voice/*, /api/turn/credentials
+  server/          Só servidor: chaves de API vivem aqui e não saem daqui
+    ai.ts          Conversa e despertar (validação zod)
+    voice.ts       ElevenLabs (clone + TTS)
+    turn.ts        Credenciais TURN temporárias (HMAC-SHA1, esquema coturn)
+  lib/             Cliente e lógica pura
+    ai-client.ts   fetch para /api/* — nunca importa de server/
+    store.ts       Estado (zustand + persist)
+    mimetic-brain/ Recuperação local BM25F + híbrida, sem servidor
+    sensation.ts   Háptica (telefone, gamepad, XR, traje)
+    lgpd.ts        Inventário de dados e consentimentos
+    ethics.ts      Guardrails do systemPrompt e saída suave
+  components/
+    world/         Cena 3D (react-three-fiber), navmesh, colisão, avatares
+party/             Servidor PartyKit (uma sala por lugar)
+```
+
+**Regra do limite servidor/cliente:** `src/lib/**` e `src/components/**` correm no
+browser e nunca podem importar de `src/server/**`. As chaves de API são lidas só
+em `src/server/**`, atrás das rotas `/api/*`.
+
+## Funcionalidades
+
+### Cérebro mímico
+
+Recuperação local, sem servidor: BM25F (campos com pesos) + cosseno lexical.
+Absorve memórias e a fala da presença; recupera os traços relevantes para cada
+mensagem e compõe o systemPrompt.
 
 ```ts
-import { topKBm25F } from "@/lib/mimetic-brain/embed";
 import { MimeticBrain } from "@/lib/mimetic-brain";
 
-// Ranking por campos (título > corpo > chat)
-const hits = topKBm25F("goiabeira", docs, 5);
-
-// Pipeline completo
 const brain = MimeticBrain.bootstrap(persona);
 brain.absorbMemory(memory);
 const systemPrompt = brain.composeSystemPrompt("o que ele plantou?");
 ```
 
+O título de uma memória pesa 3× o corpo; correções da família pesam 2,5×; a fala
+da presença pesa menos do que a memória original. A fala do **utilizador** nunca
+vira bordão da persona.
 
-## LGPD e ética
+Os vetores dos traços não são persistidos: são função pura do texto e ocupavam
+82% do espaço guardado. São recalculados ao rehidratar.
 
-- `src/lib/lgpd.ts` — inventário, consentimentos, portabilidade
-- `src/lib/ethics.ts` — guardrails no systemPrompt + saída suave
-- UI: `/places` → **Privacidade e LGPD**
-- `LEGAL.md` — notas para o jurídico
+### Mundo 3D
 
-## TURN (WebRTC)
+- **NavMesh** — A* na grelha + string-pull. Clique no chão traça o caminho;
+  WASD/joystick cancela-o.
+- **Colisão** — `oliveira` (demo), `simple-room` (medidas), `scan` (GLB),
+  `open` (campo de 40 m).
+- **Qualidade** — tier detetado (`low`/`mid`/`high`) define sombras, DPR e casters.
+- **Avatares** — cápsula procedural, ou GLB do utilizador (Mixamo opcional).
 
-### Produção (recomendado)
-- `GET /api/turn/credentials` → iceServers com username=expiry + HMAC-SHA1
-- Env servidor: `TURN_URLS`, `TURN_SECRET`, `TURN_TTL_SECONDS`
-- `docker-compose.turn.yml` — coturn com `--use-auth-secret`
+Layouts de lugar: `oliveira-house` · `simple-room` · `scan-glb` · `garden-only`.
+
+### Lugares escaneados
+
+```bash
+# Polycam/Scaniverse → GLB → otimizar:
+npx @gltf-transform/cli optimize casa.glb public/scans/casa-web.glb \
+  --compress draco --texture-compress webp
+# /places → "Anexar GLB ao lugar scan" → /scans/casa-web.glb
+```
+
+Prefira um `colliderUrl` low-poly; sem ele, o GLB visual é amostrado.
+
+### Multiplayer e voz
+
+`src/lib/realtime.ts` tem três transportes com o mesmo protocolo JSON:
+`local` (BroadcastChannel, abas do mesmo browser), `partykit` e `ws` (genérico).
+
+A voz é WebRTC mesh, sinalizada pelo mesmo transporte (`type: "voice"`), com
+perfect negotiation e volume espacial por distância (~1,5 m cheio, ~12 m quase
+mudo). O áudio é P2P — não passa pelo servidor.
+
+```bash
+npx partykit dev      # host local; ligar em /places → Interconexão
+npx partykit deploy
+```
+
+### TURN
+
+`GET /api/turn/credentials` emite credenciais temporárias
+(`username = expiry`, `password = base64(HMAC-SHA1(secret, username))`).
+É **same-origin**: recusa pedidos de outras origens, para o relay não ser usado
+por terceiros à conta de quem o hospeda.
 
 ```bash
 export EXTERNAL_IP=$(curl -4 -s ifconfig.me)
 export TURN_SECRET=troque_isto
 docker compose -f docker-compose.turn.yml up -d
-# .env da app:
-# TURN_URLS=turn:$EXTERNAL_IP:3478
-# TURN_SECRET=troque_isto
+# .env: TURN_URLS=turn:$EXTERNAL_IP:3478 e TURN_SECRET=troque_isto
 ```
 
-### Fallback no cliente
-- UI `/places` → TURN ou `VITE_TURN_*`
-- `src/lib/ice-config.ts` — `resolveIceServers()` (API → cache → local)
+### Sensação (háptica)
 
-## Voz em tempo real
+`src/lib/sensation.ts` — gestos (mão, ombro, abraço, batimento) sincronizados com
+a animação do avatar, por telefone (Vibration API), gamepad, XR ou traje
+(protocolo JSON sobre WebSocket, `SUIT_PROTOCOL_DOC`).
 
-- `src/lib/voice-chat.ts` — WebRTC mesh + STUN Google
-- Sinalização no mesmo `RealtimeTransport` (`type: "voice"`)
-- HUD: **Voz** · silenciar · ensurdecer
-- Volume espacial por distância no lar (~1,5–12 m)
+Gestos faciais têm o seu próprio caminho (`facial-haptics.ts`) e chegam ao
+hardware como regiões do rosto, não como padrão genérico de corpo.
 
-## Multiplayer (PartyKit)
+Requer consentimento memorial explícito. Painel em `/places`.
 
-- `src/lib/realtime.ts` — local | partykit | ws
-- `party/presenca.ts` + `partykit.json`
-- UI: `/places` → **Interconexão**
+### LGPD e ética
 
-```bash
-npx partykit dev          # host local
-# App → PartyKit → host mostrado no terminal
-npx partykit deploy
-```
+- `src/lib/lgpd.ts` — inventário de tratamentos, bases legais, consentimentos
+- `src/lib/ethics.ts` — guardrails no systemPrompt, modo de saída suave, CVV 188
+- UI: `/places` → **Privacidade e LGPD**
+- Dados locais por defeito; exportação e eliminação na UI
 
-Env opcional: `VITE_PARTYKIT_HOST=...`
+## Estado e próximos passos
 
-## O meu corpo (scan do utilizador)
-
-### Animações sem Mixamo
-- `lib/default-anim.ts` — pack procedural + retarget por nome de bone
-- Modos: `clips` | `bones` | `root` (`window.__avatarAnimMode`)
-
-### Mixamo
-- `lib/mixamo.ts` — classificação de clips
-- `player-avatar.tsx` — AnimationMixer (idle / walk / hug)
-- UI: marcar GLB como rigado + guia passo a passo
-
-
-
-- `Persona.bodyScan` + `player-avatar.tsx` (useGLTF)
-- UI em `/places` → **O meu corpo**
-- Sem GLB → avatar cápsula de sempre
-- `public/avatars/` para ficheiros otimizados
-
-## Sensação (háptica / traje)
-
-**Decisão de produto:** fechar o ciclo *ver → ouvir → sentir* com **gesto no avatar**
-sincronizado à háptica (abraço, mão, ombro, batimento). O simulador visual do traje
-fica para quando existir hardware.
-
-
-
-- `lib/sensation.ts` — gestos (mão, ombro, abraço, batimento), canais telefone/gamepad/XR/traje
-- Consentimento memorial obrigatório
-- Painel em `/places` · botões no HUD perto de alguém
-- Protocolo JSON do traje (`SUIT_PROTOCOL_DOC`) via WebSocket
-
-# Presença
-
-O lar virtual onde a família continua junta — vivos, lugares reais e memoriais.
-
-## Novidades deste pacote
-
-### NavMesh (navegação)
-
-- Clique no chão → caminho + **faixa sage** no piso (`PlayerPathRibbon`)
-- Personas (memoriais/vivos) **aproximam-se** do jogador via A* (`WalkingNpc`)
-- Conversa aberta ou distância &lt; 9 m dispara repath ~1,8 s
-
-### NavMesh (núcleo)
-
-- `navmesh.ts` — A* na grelha, string-pull, snap ao mesh
-- Clique curto no chão → caminho até o ponto (anel sage)
-- WASD/joystick cancela o caminho automático
-- Atualiza junto com `setScanCollision` / simple-room / oliveira
-
-### Colisão GLB (otimizada)
-
-- `scan-collision.ts` — bounds XZ, AABBs de móveis, grelha de ocupação
-- `setScanCollision` — modo `scan` (slide move, sem raycast por frame)
-- Preferir `colliderUrl` low-poly; senão amostra o GLB visual
-- Debug: `window.__scanCollision`
-
-### Loader `scan-glb` (`useGLTF` + collider)
-
-- `src/components/world/scanned-place.tsx` — carrega GLB com Drei `useGLTF`, sombra, Suspense
-- Sem `glbUrl` → fallback `SimpleRoom` (medidas)
-- `colliderUrl` opcional (mesh invisível)
-- Bounding box exposto em `window.__scanBounds` para debug
-- `/places` → **Anexar GLB ao lugar scan**
-
-Fluxo:
-
-```bash
-# 1. Scan no Polycam/Scaniverse → export GLB
-# 2. Otimizar
-npx @gltf-transform/cli optimize casa.glb public/scans/casa-web.glb \
-  --compress draco --texture-compress webp
-# 3. Em /places, anexe a URL /scans/casa-web.glb ao lugar "Casa escaneada"
-# 4. Entrar no mundo
-```
-
-### API de voz ElevenLabs
-
-| Rota | Arquivo |
-|------|---------|
-| `POST /api/voice/clone` | `src/routes/api/voice/clone.ts` |
-| `POST /api/voice/tts` | `src/routes/api/voice/tts.ts` |
-| Lógica | `src/server/voice.ts` |
-| HTTP adapters | `src/server/voice-http.ts` |
-| Server fn helpers | `src/server/voice-fns.ts` |
-| Cliente | `src/lib/voice.ts` (já usado no cofre/chat) |
-
-```bash
-export ELEVENLABS_API_KEY=sk-...
-export XAI_API_KEY=...
-```
-
-No TanStack Start, registre os handlers POST das rotas API (ou use `createServerFn` com `voice-fns.ts`). Em dev Vite puro, monte um plugin/middleware que encaminhe `/api/voice/*` para `handleVoiceClone` / `handleVoiceTts`.
-
-### Layouts de lugar
-
-| layout | Componente |
-|--------|------------|
-| `oliveira-house` | `House` (demo) |
-| `simple-room` | `SimpleRoom` (medidas) |
-| `scan-glb` | `ScannedPlace` |
-| `garden-only` | campo aberto aproximado |
-
-### Interconexão
-
-BroadcastChannel local; stub PartyKit em `lib/realtime.ts`.
-
-## Como rodar
-
-```bash
-npm install
-npm run dev
-```
-
-## Ética
-
-Reconstrução de memória. Voz clonada exige consentimento (UI do cofre). Scan da casa é dado sensível.
+Ver [PLANO.md](PLANO.md) — o que foi corrigido, o que ficou por fazer e por que ordem.
