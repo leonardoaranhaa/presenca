@@ -1,8 +1,8 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { ChatMessage, Persona, WorldPose } from "./types";
 import { buildSystemPrompt, PLAYER_ID, SAMPLE_FAMILY } from "./seed";
-import { MimeticBrain, applyBrainToPersona } from "./mimetic-brain";
+import { MimeticBrain, applyBrainToPersona, embedText } from "./mimetic-brain";
 import { SAMPLE_PLACES, type Place } from "./places";
 import type { QualityTier } from "./quality";
 import { qualityProfile } from "./quality";
@@ -44,13 +44,92 @@ type State = {
   getQuality: () => ReturnType<typeof qualityProfile>;
   connectPlace: () => void;
   disconnectPlace: () => void;
-  publishPose: () => void;
+  publishPose: (pose?: WorldPose) => void;
   setPeers: (peers: PeerPose[]) => void;
   exportLocalData: () => Record<string, unknown>;
   wipeLocalData: () => void;
 };
 
+const STORAGE_KEY = "presenca-v2";
+
+/**
+ * Os vectores dos traços não são persistidos.
+ *
+ * Cada traço guarda 64 floats, ~1,3 KB em JSON — 82% do peso do traço. Com o
+ * limite de 200 traços por persona são 310 KB cada, e o localStorage tem ~5 MB
+ * no total (partilhados com as fotos do cofre, que são data URLs). O vector é
+ * uma função pura de `text` (embedText), por isso é recalculado ao rehidratar
+ * em vez de ocupar espaço que as memórias da família precisam.
+ */
+function stripVectors(p: Persona): Persona {
+  const traces = p.soul?.mimetic?.traces;
+  if (!traces?.length) return p;
+  return {
+    ...p,
+    soul: {
+      ...p.soul!,
+      mimetic: {
+        ...p.soul!.mimetic!,
+        traces: traces.map(({ vector: _vector, ...rest }) => ({ ...rest, vector: [] })),
+      },
+    },
+  };
+}
+
+function restoreVectors(p: Persona): Persona {
+  const traces = p.soul?.mimetic?.traces;
+  if (!traces?.length) return p;
+  return {
+    ...p,
+    soul: {
+      ...p.soul!,
+      mimetic: {
+        ...p.soul!.mimetic!,
+        traces: traces.map((t) =>
+          t.vector?.length ? t : { ...t, vector: embedText(t.text) },
+        ),
+      },
+    },
+  };
+}
+
+/**
+ * Storage que não perde escritas em silêncio.
+ *
+ * Ao estourar a quota, o localStorage lança e o zustand/persist engole: a
+ * família adicionaria uma memória, veria o ecrã actualizar e perderia tudo ao
+ * recarregar. Aqui o erro é sinalizado para a UI poder avisar.
+ */
+let quotaExceeded = false;
+
+export function isStorageFull() {
+  return quotaExceeded;
+}
+
+const quotaAwareStorage: Storage = {
+  get length() {
+    return localStorage.length;
+  },
+  clear: () => localStorage.clear(),
+  key: (i) => localStorage.key(i),
+  getItem: (k) => localStorage.getItem(k),
+  removeItem: (k) => localStorage.removeItem(k),
+  setItem: (k, v) => {
+    try {
+      localStorage.setItem(k, v);
+      quotaExceeded = false;
+    } catch (e) {
+      quotaExceeded = true;
+      console.error(
+        "[presenca] armazenamento local cheio — memórias novas não foram guardadas",
+        e,
+      );
+    }
+  },
+};
+
 let transport: RealtimeTransport | null = null;
+let unsubscribeTransport: (() => void) | null = null;
 
 export function getRealtimeTransport() {
   return transport;
@@ -165,7 +244,7 @@ export const usePresence = create<State>()(
       pushMessage: (msg) => {
         const messages = { ...get().messages };
         const list = messages[msg.personaId] ?? [];
-        messages[msg.personaId] = [...list, msg].slice(-80);
+        messages[msg.personaId] = [...list, msg].slice(-MAX_MESSAGES);
         let personas = get().personas;
         const target = personas.find((p) => p.id === msg.personaId);
         if (target && target.kind === "memorial") {
@@ -212,19 +291,31 @@ export const usePresence = create<State>()(
           updatedAt: Date.now(),
         };
         transport.connect(s.activePlaceId, self);
-        transport.onMessage(() => {
+        // A subscrição anterior era descartada: cada reconexão empilhava mais
+        // um handler sobre o transporte antigo.
+        unsubscribeTransport = transport.onMessage(() => {
           set({ peers: transport?.listPeers() ?? [] });
         });
         set({ peers: [] });
       },
       disconnectPlace: () => {
+        unsubscribeTransport?.();
+        unsubscribeTransport = null;
         transport?.disconnect();
         transport = null;
         set({ peers: [] });
       },
-      publishPose: () => {
+      /**
+       * Publica a pose no transporte.
+       *
+       * Aceita a pose ao vivo por argumento: o mundo 3D publica ~8x/s e
+       * escrever isso no store fazia todos os subscritores re-renderizar
+       * a esse ritmo. O store guarda só a pose amortecida (persistência).
+       */
+      publishPose: (live) => {
         const s = get();
         if (!transport) return;
+        const pose = live ?? s.pose;
         const player = s.personas.find((p) => p.isPlayer);
         transport.send({
           type: "pose",
@@ -232,9 +323,9 @@ export const usePresence = create<State>()(
             peerId: s.peerId,
             displayName: player?.name ?? "Visitante",
             placeId: s.activePlaceId,
-            x: s.pose.x,
-            z: s.pose.z,
-            yaw: s.pose.yaw,
+            x: pose.x,
+            z: pose.z,
+            yaw: pose.yaw,
             personaId: player?.id,
             bodyGlbUrl: player?.bodyScan?.glbUrl?.startsWith("http")
               ? player.bodyScan.glbUrl
@@ -266,17 +357,18 @@ export const usePresence = create<State>()(
           peers: [],
         });
         try {
-          localStorage.removeItem("presenca-v2");
+          localStorage.removeItem(STORAGE_KEY);
         } catch {
           /* ignore */
         }
       },
     }),
     {
-      name: "presenca-v2",
+      name: STORAGE_KEY,
+      storage: createJSONStorage(() => quotaAwareStorage),
       partialize: (s) => ({
         onboarded: s.onboarded,
-        personas: s.personas,
+        personas: s.personas.map(stripVectors),
         places: s.places,
         activePlaceId: s.activePlaceId,
         messages: s.messages,
@@ -285,7 +377,9 @@ export const usePresence = create<State>()(
         peerId: s.peerId,
       }),
       onRehydrateStorage: () => (state) => {
-        state?.markHydrated();
+        if (!state) return;
+        state.personas = state.personas.map(restoreVectors);
+        state.markHydrated();
       },
     },
   ),

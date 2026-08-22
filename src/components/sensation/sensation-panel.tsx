@@ -13,7 +13,6 @@ import {
   SUIT_PROTOCOL_DOC,
   loadFacialPrefs,
   setFacialPrefs,
-  getFacialPrefs,
   DEFAULT_FACIAL_PREFS,
   type FacialPrefs,
   FACIAL_PROTOCOL_DOC,

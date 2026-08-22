@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Send, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SoftExitBanner } from "@/components/legal/soft-exit-banner";
-import { chatWithPresence } from "@/lib/ai";
+import { chatWithPresence } from "@/lib/ai-client";
 import { recordMemorialMessage } from "@/lib/ethics";
 import { featureAllowed, loadPrivacyPrefs } from "@/lib/lgpd";
 import { buildSystemPrompt } from "@/lib/seed";
@@ -20,15 +20,24 @@ export function PresenceChat({ persona, compact = false }: { persona: Persona; c
   const [busy, setBusy] = useState(false);
   const [wellnessTick, setWellnessTick] = useState(0);
   const scroller = useRef<HTMLDivElement>(null);
-  const prompt = useMemo(() => {
-    const brain = MimeticBrain.bootstrap(persona);
-    return brain.composeSystemPrompt(draft) || persona.soul?.systemPrompt || buildSystemPrompt(persona);
-  }, [persona, draft]);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Cancela o pedido em voo se o utilizador sair da conversa.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   async function send() {
     const text = draft.trim();
     if (!text || busy) return;
     setDraft("");
+
+    // O prompt é composto aqui, não a cada tecla: `composeSystemPrompt` faz
+    // bootstrap do cérebro e uma passagem BM25F sobre todos os traços.
+    // A recuperação também fica mais correta com a mensagem enviada em vez
+    // de um rascunho parcial.
+    const prompt =
+      MimeticBrain.bootstrap(persona).composeSystemPrompt(text) ||
+      persona.soul?.systemPrompt ||
+      buildSystemPrompt(persona);
     const userMsg = {
       id: uid("msg"),
       personaId: persona.id,
@@ -46,12 +55,18 @@ export function PresenceChat({ persona, compact = false }: { persona: Persona; c
     setBusy(true);
     try {
       const history = [...messages, userMsg].map((m) => ({ role: m.role, text: m.text }));
-      const res = await chatWithPresence({
-        name: persona.name,
-        systemPrompt: prompt,
-        history,
-        message: text,
-      });
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const res = await chatWithPresence(
+        {
+          name: persona.name,
+          systemPrompt: prompt,
+          history,
+          message: text,
+        },
+        controller.signal,
+      );
       if (!res.ok) {
         toast.error(res.error);
         return;
@@ -76,11 +91,17 @@ export function PresenceChat({ persona, compact = false }: { persona: Persona; c
   }
 
   function speak(text: string) {
-    void speakPresence(text, persona.voiceProfile ?? {
-      provider: "browser",
-      rate: persona.kind === "memorial" ? 0.92 : 1,
-      pitch: persona.hue === "rose" || persona.hair === "long" || persona.hair === "bun" ? 1.15 : 0.85,
-    });
+    // Sem voiceProfile explícito, só o ritmo muda (memorial fala mais devagar).
+    // A versão anterior deduzia o tom a partir do penteado e da cor da roupa
+    // — o aspeto do avatar não diz nada sobre a voz de quem partiu, e essa
+    // escolha pertence a quem a conheceu, no cofre de voz.
+    void speakPresence(
+      text,
+      persona.voiceProfile ?? {
+        provider: "browser",
+        rate: persona.kind === "memorial" ? 0.92 : 1,
+      },
+    );
   }
 
   return (

@@ -1,48 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
+import { useEffect, useMemo, useState } from "react";
 import { onPlayerPathChange, type NavPoint } from "./navmesh";
 
 /**
- * Polyline do caminho do jogador no chão (Y ≈ 0.04).
+ * Faixa do caminho do jogador no chão.
+ *
+ * Usa segmentos de `mesh` em vez de `THREE.Line`: `linewidth` é ignorado
+ * pela maioria das implementações WebGL, então uma linha fica invisível
+ * em ecrãs densos. Cada segmento é uma caixa fina orientada pelo trajeto.
  */
-export function PlayerPathLine() {
-  const [path, setPath] = useState<NavPoint[]>([]);
-  const lineRef = useRef<THREE.Line>(null);
-
-  useEffect(() => onPlayerPathChange(setPath), []);
-
-  const geom = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    if (path.length >= 2) {
-      const positions = new Float32Array(path.length * 3);
-      for (let i = 0; i < path.length; i++) {
-        positions[i * 3] = path[i].x;
-        positions[i * 3 + 1] = 0.04;
-        positions[i * 3 + 2] = path[i].z;
-      }
-      g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    }
-    return g;
-  }, [path]);
-
-  useEffect(() => {
-    return () => {
-      geom.dispose();
-    };
-  }, [geom]);
-
-  if (path.length < 2) return null;
-
-  return (
-    <line ref={lineRef as unknown as React.RefObject<THREE.Line>}>
-      <bufferGeometry attach="geometry" {...{}} />
-      <primitive object={geom} attach="geometry" />
-      <lineBasicMaterial color="#8a9a86" transparent opacity={0.75} linewidth={2} />
-    </line>
-  );
-}
-
-/** Versão com mesh de faixas (mais visível que Line em WebGL). */
 export function PlayerPathRibbon() {
   const [path, setPath] = useState<NavPoint[]>([]);
   useEffect(() => onPlayerPathChange(setPath), []);

@@ -1,12 +1,13 @@
 /**
- * PartyKit server — sala = placeId do Presença.
+ * PartyKit server — uma sala por `placeId` do Presença.
  *
  * Deploy:
  *   npx partykit dev
  *   npx partykit deploy
  *
- * Client: provider partykit + host do projeto.
+ * Cliente: provider "partykit" + host do projeto (ver lib/realtime.ts).
  */
+import type * as Party from "partykit/server";
 
 type PeerPose = {
   peerId: string;
@@ -20,64 +21,109 @@ type PeerPose = {
   updatedAt: number;
 };
 
+/**
+ * Sinalização de voz WebRTC. As variantes com `to` são dirigidas a um peer;
+ * o servidor entrega-as só a esse, em vez de difundir a sala inteira.
+ */
+type VoiceSignal =
+  | { kind: "voice-join"; peerId: string; displayName: string; placeId: string }
+  | { kind: "voice-here"; peerId: string; displayName: string; placeId: string; to: string }
+  | { kind: "voice-leave"; peerId: string; placeId: string }
+  | { kind: "voice-offer"; from: string; to: string; sdp: unknown }
+  | { kind: "voice-answer"; from: string; to: string; sdp: unknown }
+  | { kind: "voice-ice"; from: string; to: string; candidate: unknown };
+
 type Msg =
   | { type: "pose"; payload: PeerPose }
   | { type: "join"; payload: PeerPose }
   | { type: "leave"; payload: { peerId: string; placeId: string } }
   | { type: "chat"; payload: { peerId: string; text: string; at: number } }
-  | { type: "sync"; payload: { peers: PeerPose[] } };
+  | { type: "sync"; payload: { peers: PeerPose[] } }
+  | { type: "voice"; payload: VoiceSignal };
 
-type Conn = {
-  id: string;
-  peerId?: string;
-  send: (data: string) => void;
-};
+/** Um peer é considerado ausente se não publica pose há este tempo. */
+const STALE_MS = 15_000;
 
-// API mínima compatível com PartyKit Party hooks
-export default class PresencaParty {
-  peers = new Map<string, PeerPose>();
-  connections = new Map<string, Conn>();
+type ConnState = { peerId?: string };
 
-  constructor(private room: { id: string; broadcast: (msg: string, without?: string[]) => void }) {}
+export default class PresencaParty implements Party.Server {
+  private peers = new Map<string, PeerPose>();
 
-  onConnect(conn: { id: string; send: (d: string) => void }) {
-    this.connections.set(conn.id, { id: conn.id, send: (d) => conn.send(d) });
-    // sync estado atual
-    const list = [...this.peers.values()];
-    conn.send(JSON.stringify({ type: "sync", payload: { peers: list } } satisfies Msg));
+  constructor(readonly room: Party.Room) {}
+
+  onConnect(conn: Party.Connection<ConnState>) {
+    this.prune();
+    conn.send(
+      JSON.stringify({
+        type: "sync",
+        payload: { peers: [...this.peers.values()] },
+      } satisfies Msg),
+    );
   }
 
-  onClose(conn: { id: string }) {
-    const c = this.connections.get(conn.id);
-    this.connections.delete(conn.id);
-    if (c?.peerId) {
-      this.peers.delete(c.peerId);
-      this.room.broadcast(
-        JSON.stringify({
-          type: "leave",
-          payload: { peerId: c.peerId, placeId: this.room.id },
-        } satisfies Msg),
-        [conn.id],
-      );
-    }
+  onClose(conn: Party.Connection<ConnState>) {
+    const peerId = conn.state?.peerId;
+    if (!peerId) return;
+    this.peers.delete(peerId);
+    this.room.broadcast(
+      JSON.stringify({
+        type: "leave",
+        payload: { peerId, placeId: this.room.id },
+      } satisfies Msg),
+      [conn.id],
+    );
   }
 
-  onMessage(message: string, sender: { id: string; send: (d: string) => void }) {
+  onMessage(message: string, sender: Party.Connection<ConnState>) {
     let msg: Msg;
     try {
       msg = JSON.parse(message) as Msg;
     } catch {
       return;
     }
-    const c = this.connections.get(sender.id);
-    if (msg.type === "join" || msg.type === "pose") {
-      this.peers.set(msg.payload.peerId, msg.payload);
-      if (c) c.peerId = msg.payload.peerId;
+
+    switch (msg.type) {
+      case "join":
+      case "pose": {
+        this.peers.set(msg.payload.peerId, msg.payload);
+        // Liga a ligação ao peerId para que onClose saiba quem saiu.
+        sender.setState({ peerId: msg.payload.peerId });
+        break;
+      }
+      case "leave": {
+        this.peers.delete(msg.payload.peerId);
+        break;
+      }
+      case "voice": {
+        // Entrega dirigida: offer/answer/ice/here só interessam ao destinatário.
+        const to = "to" in msg.payload ? msg.payload.to : undefined;
+        if (to) {
+          const target = this.findConnectionByPeerId(to);
+          target?.send(message);
+          return;
+        }
+        break;
+      }
+      case "chat":
+      case "sync":
+        break;
     }
-    if (msg.type === "leave") {
-      this.peers.delete(msg.payload.peerId);
-    }
-    // rebroadcast
+
     this.room.broadcast(message, [sender.id]);
+  }
+
+  private findConnectionByPeerId(peerId: string): Party.Connection<ConnState> | undefined {
+    for (const conn of this.room.getConnections<ConnState>()) {
+      if (conn.state?.peerId === peerId) return conn;
+    }
+    return undefined;
+  }
+
+  /** Remove poses de peers que caíram sem enviar "leave" (aba fechada, rede). */
+  private prune() {
+    const now = Date.now();
+    for (const [id, pose] of this.peers) {
+      if (now - pose.updatedAt > STALE_MS) this.peers.delete(id);
+    }
   }
 }

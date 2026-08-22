@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, PhoneOff, Volume2, VolumeX } from "lucide-react";
+import { toast } from "sonner";
 import { getRealtimeTransport, usePresence } from "@/lib/store";
 import { getVoiceChat, type VoiceChatState } from "@/lib/voice-chat";
 import { PLAYER_ID } from "@/lib/seed";
@@ -35,20 +36,37 @@ export function VoiceControls({ enabled }: { enabled: boolean }) {
     if (!enabled && state.active) void voice.stop();
   }, [enabled, state.active, voice]);
 
+  const activeRef = useRef(state.active);
+  activeRef.current = state.active;
+
+  // Mudar de lugar cria um transporte novo; a sessão de voz ficaria presa ao
+  // antigo (sinalização a cair no vazio). Encerrar e deixar reentrar.
+  const prevPlace = useRef(placeId);
+  useEffect(() => {
+    if (prevPlace.current === placeId) return;
+    prevPlace.current = placeId;
+    if (activeRef.current) void voice.stop();
+  }, [placeId, voice]);
+
   if (!enabled) return null;
 
   const player = personas.find((p) => p.id === PLAYER_ID || p.isPlayer);
 
   async function toggle() {
-    if (state.active) await voice.stop();
-    else if (!featureAllowed("allowLiveVoice", loadPrivacyPrefs())) {
+    if (state.active) {
+      await voice.stop();
       return;
-    } else
-      await voice.start({
-        selfId: peerId,
-        placeId,
-        displayName: player?.name ?? "Visitante",
-      });
+    }
+    if (!featureAllowed("allowLiveVoice", loadPrivacyPrefs())) {
+      // Antes falhava em silêncio: o botão não fazia nada e não se percebia porquê.
+      toast.error("A voz ao vivo está desligada nas preferências de privacidade.");
+      return;
+    }
+    await voice.start({
+      selfId: peerId,
+      placeId,
+      displayName: player?.name ?? "Visitante",
+    });
   }
 
   return (

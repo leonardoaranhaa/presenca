@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
+import { Billboard, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { usePresence } from "@/lib/store";
 import { AVATAR_HUES, ROOM_SPAWNS, type Persona } from "@/lib/types";
@@ -163,15 +164,14 @@ export function Figure({
     // Háptica facial → brilho local no rosto
     const faceGestures = ["cheek_kiss", "forehead_touch", "cheek_caress", "temple_press", "nose_boop", "farewell_cheek"];
     if (gType && faceGestures.includes(gType) && gAmt > 0) {
-      const side = gesturePose?.current?.hugStyle; // reuse field? better store facialSide
-      void side;
+      const side = gesturePose?.current?.facialSide ?? "right";
       const glow = 0.35 + 0.65 * gAmt;
       if (leftCheek.current) {
         const m = leftCheek.current.material as THREE.MeshBasicMaterial;
         const on =
           gType === "forehead_touch" || gType === "nose_boop"
             ? 0.15 * gAmt
-            : (gesturePose?.current as { facialSide?: string })?.facialSide !== "right"
+            : side !== "right"
               ? glow
               : 0.05 * gAmt;
         m.opacity = on;
@@ -182,7 +182,7 @@ export function Figure({
         const on =
           gType === "forehead_touch" || gType === "nose_boop"
             ? 0.15 * gAmt
-            : (gesturePose?.current as { facialSide?: string })?.facialSide !== "left"
+            : side !== "left"
               ? glow
               : 0.05 * gAmt;
         m.opacity = on;
@@ -330,28 +330,43 @@ function Hair({ hair, color }: { hair: Persona["hair"]; color: string }) {
   );
 }
 
+/**
+ * Corpos das outras pessoas ligadas ao mesmo lugar.
+ *
+ * O nome era um comentário ("nome flutuante simplificado") sobre uma esfera de
+ * 3 cm: não havia nome nenhum. Num lar partilhado saber quem está à frente é
+ * metade do ponto, por isso passa a ser texto real virado para a câmara.
+ */
 export function PeerFigures({ peers }: { peers: PeerPose[] }) {
   return (
     <>
       {peers.map((p) => (
-        <group key={p.peerId} position={[p.x, 0, p.z]} rotation={[0, p.yaw + Math.PI, 0]}>
-          <mesh position={[0, 0.72, 0]} geometry={geoCapsule()}>
-            <meshStandardMaterial color="#5c6b7a" roughness={0.7} />
-          </mesh>
-          <mesh position={[0, 1.38, 0]} geometry={geoSphere()}>
-            <meshStandardMaterial color="#c4a07a" roughness={0.55} />
-          </mesh>
-          <mesh position={[0, 1.85, 0]}>
-            <sphereGeometry args={[0.05, 8, 8]} />
-            <meshBasicMaterial color="#8a9a86" />
-          </mesh>
-          {/* nome flutuante simplificado */}
-          <group position={[0, 2.05, 0]}>
-            <mesh>
-              <sphereGeometry args={[0.03, 6, 6]} />
-              <meshBasicMaterial color="#c5c1b7" />
+        <group key={p.peerId}>
+          <group position={[p.x, 0, p.z]} rotation={[0, p.yaw + Math.PI, 0]}>
+            <mesh position={[0, 0.72, 0]} geometry={geoCapsule()}>
+              <meshStandardMaterial color="#5c6b7a" roughness={0.7} />
+            </mesh>
+            <mesh position={[0, 1.38, 0]} geometry={geoSphere()}>
+              <meshStandardMaterial color="#c4a07a" roughness={0.55} />
+            </mesh>
+            <mesh position={[0, 1.85, 0]}>
+              <sphereGeometry args={[0.05, 8, 8]} />
+              <meshBasicMaterial color="#8a9a86" />
             </mesh>
           </group>
+          <Billboard position={[p.x, 2.12, p.z]}>
+            <Text
+              fontSize={0.16}
+              color="#e8e0d2"
+              outlineWidth={0.008}
+              outlineColor="#1c2228"
+              anchorX="center"
+              anchorY="middle"
+              maxWidth={3}
+            >
+              {p.displayName || "Visitante"}
+            </Text>
+          </Billboard>
         </group>
       ))}
     </>
@@ -524,8 +539,11 @@ export function FamilyFigures({
         const spawn = ROOM_SPAWNS[p.room];
         const x = spawn.x + (i % 2 === 0 ? 0.15 : -0.2);
         const z = spawn.z;
-        const approach =
-          p.kind === "memorial" || talkingId === p.id || p.kind === "living";
+        // A condição anterior — memorial || falando || vivo — era sempre
+        // verdadeira, por isso toda a gente convergia para o jogador em
+        // permanência. Aproximam-se quem está em conversa, e as memoriais,
+        // que é o gesto que a experiência quer.
+        const approach = talkingId === p.id || p.kind === "memorial";
         return (
           <WalkingNpc
             key={p.id}

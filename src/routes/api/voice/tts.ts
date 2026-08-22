@@ -1,14 +1,14 @@
 /**
  * POST /api/voice/tts
- * Body JSON: { text, voiceId, modelId? }
- * Response: audio/mpeg
+ * Body: { text, voiceId, modelId? } → audio/mpeg
  */
+import { createFileRoute } from "@tanstack/react-router";
 import { handleVoiceTts } from "@/server/voice-http";
 
-export async function POST(request: Request) {
-  return handleVoiceTts(request);
-}
-
-export default async function handler(request: Request) {
-  return handleVoiceTts(request);
-}
+export const Route = createFileRoute("/api/voice/tts")({
+  server: {
+    handlers: {
+      POST: ({ request }) => handleVoiceTts(request),
+    },
+  },
+});

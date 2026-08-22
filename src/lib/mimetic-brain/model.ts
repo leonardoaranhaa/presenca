@@ -3,9 +3,12 @@ import type { MimeticModel } from "./types";
 
 const MAX_TRACES = 200;
 
+/** Versão do formato de MimeticModel. Subir ao mudar a forma dos traços. */
+export const MODEL_VERSION = 1;
+
 export function emptyModel(): MimeticModel {
   return {
-    version: 1,
+    version: MODEL_VERSION,
     updatedAt: Date.now(),
     evolvingSummary: "",
     traitWeights: {},
@@ -53,18 +56,38 @@ export function pushTrace(model: MimeticModel, trace: MimeticModel["traces"][0])
     traces: [...model.traces, trace].slice(-MAX_TRACES),
     updatedAt: Date.now(),
     trainSteps: model.trainSteps + 1,
-    version: model.version + 1,
+    // `version` é a versão do formato do modelo (para migrações), não um
+    // contador de passos — quem conta é `trainSteps`. Incrementá-la aqui
+    // tornava impossível saber que esquema um modelo guardado usa.
+    version: MODEL_VERSION,
   };
 }
 
-export function bumpTraits(model: MimeticModel, text: string, traits: string[]): MimeticModel {
+/**
+ * Reforça traços observados no texto e, quando o texto é da própria pessoa,
+ * recolhe bordões.
+ *
+ * `harvestCatchphrases` existe porque a versão anterior aplicava a recolha a
+ * qualquer texto, incluindo o que o utilizador escrevia. O resultado era a
+ * persona a herdar as frases de quem estava a conversar com ela — exactamente
+ * o contrário de mimetizar quem partiu.
+ */
+export function bumpTraits(
+  model: MimeticModel,
+  text: string,
+  traits: string[],
+  harvestCatchphrases = false,
+): MimeticModel {
   const lower = text.toLowerCase();
   const traitWeights = { ...model.traitWeights };
   for (const t of traits) {
     if (lower.includes(t.toLowerCase())) traitWeights[t] = (traitWeights[t] ?? 0) + 0.15;
   }
+
+  if (!harvestCatchphrases) return { ...model, traitWeights };
+
   const phrases = text.match(/[^.!?\n]{8,40}/g) ?? [];
-  let catchphrases = [...model.catchphrases];
+  const catchphrases = [...model.catchphrases];
   for (const ph of phrases.slice(0, 3)) {
     const p = ph.trim();
     if (p.split(" ").length <= 8) catchphrases.push(p);

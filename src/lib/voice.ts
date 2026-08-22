@@ -110,7 +110,17 @@ export async function speakPresence(text: string, profile?: VoiceProfile) {
     const url = await speakElevenLabs(text, p.elevenLabsVoiceId);
     if (url) {
       const audio = new Audio(url);
-      await audio.play().catch(() => speakBrowser(text, p));
+      // O blob fica retido enquanto a URL existir. Sem revoke, cada resposta
+      // falada deixava um áudio inteiro em memória até fechar o separador.
+      const release = () => URL.revokeObjectURL(url);
+      audio.addEventListener("ended", release, { once: true });
+      audio.addEventListener("error", release, { once: true });
+      try {
+        await audio.play();
+      } catch {
+        release();
+        speakBrowser(text, p);
+      }
       return;
     }
   }

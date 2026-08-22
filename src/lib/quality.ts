@@ -27,8 +27,26 @@ function detectTier(): QualityTier {
   return "mid";
 }
 
+/**
+ * Perfis memoizados por tier.
+ *
+ * `qualityProfile` é chamada dentro de seletores zustand. Devolver um objeto
+ * novo a cada chamada fazia a comparação por identidade falhar sempre, e todo
+ * o mundo 3D (Canvas, House, cada Figure) voltava a renderizar a cada
+ * escrita no store — várias vezes por segundo com a pose a ser publicada.
+ */
+const profileCache = new Map<QualityTier, QualityProfile>();
+
 export function qualityProfile(forced?: QualityTier): QualityProfile {
   const tier = forced ?? detectTier();
+  const cached = profileCache.get(tier);
+  if (cached) return cached;
+  const profile = buildProfile(tier);
+  profileCache.set(tier, profile);
+  return profile;
+}
+
+function buildProfile(tier: QualityTier): QualityProfile {
   if (tier === "low") {
     return {
       tier,

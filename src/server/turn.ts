@@ -14,6 +14,9 @@
  *   TURN_REALM           — opcional (informativo)
  *   TURN_TTL_SECONDS     — default 3600
  *   TURN_STATIC_USERNAME / TURN_STATIC_CREDENTIAL — fallback legado
+ *
+ * Só variáveis de servidor: as VITE_* são expostas ao browser e não devem
+ * decidir o que o servidor emite.
  */
 
 export type TurnCredentialsResponse = {
@@ -68,7 +71,7 @@ const STUN: RTCIceServer[] = [
 ];
 
 export async function issueTurnCredentials(): Promise<TurnCredentialsResponse> {
-  const urls = parseUrls(env("TURN_URLS") || env("VITE_TURN_URLS"));
+  const urls = parseUrls(env("TURN_URLS"));
   const secret = env("TURN_SECRET");
   const ttl = Math.max(60, Number(env("TURN_TTL_SECONDS") || 3600));
   const expiresAt = Math.floor(Date.now() / 1000) + ttl;
@@ -91,8 +94,8 @@ export async function issueTurnCredentials(): Promise<TurnCredentialsResponse> {
     };
   }
 
-  const staticUser = env("TURN_STATIC_USERNAME") || env("VITE_TURN_USERNAME");
-  const staticCred = env("TURN_STATIC_CREDENTIAL") || env("VITE_TURN_CREDENTIAL");
+  const staticUser = env("TURN_STATIC_USERNAME");
+  const staticCred = env("TURN_STATIC_CREDENTIAL");
   if (urls.length && staticUser && staticCred) {
     return {
       mode: "static",

@@ -29,6 +29,17 @@ export type VoiceSignalPayload =
       placeId: string;
     }
   | {
+      /**
+       * Resposta de quem já estava na sala a um "voice-join".
+       * Sem ela, quem chega não descobre os peers existentes.
+       */
+      kind: "voice-here";
+      peerId: string;
+      displayName: string;
+      placeId: string;
+      to: string;
+    }
+  | {
       kind: "voice-leave";
       peerId: string;
       placeId: string;
@@ -116,7 +127,9 @@ function createHandlerSet() {
     },
     onMessage(fn: Handler) {
       handlers.add(fn);
-      return () => handlers.delete(fn);
+      return () => {
+        handlers.delete(fn);
+      };
     },
   };
 }

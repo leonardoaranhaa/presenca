@@ -145,7 +145,6 @@ function buildOccupancyGrid(
   const cz = Math.floor(rows / 2);
   const filled = new Uint8Array(cols * rows);
   const stack: number[] = [];
-  const start = cz * cols + cx;
   // procura semente andável perto do centro
   let seed = -1;
   for (let r = 0; r < rows && seed < 0; r++) {

@@ -19,6 +19,7 @@ import {
   resolveFacialPattern,
   type FacialContext,
   type FacialGesture,
+  type FacialPattern,
 } from "./facial-haptics";
 
 export type SensationGesture =
@@ -188,6 +189,8 @@ export const DEFAULT_SENSATION_PREFS: SensationPrefs = {
 type SuitTransport = {
   connected: boolean;
   sendPattern: (pattern: SuitPattern, meta: SensationEvent) => Promise<void>;
+  /** Payload já formado (ex.: máscara facial) — não passa por suitPatternFor. */
+  sendRaw: (payload: unknown) => Promise<void>;
   disconnect: () => void;
 };
 
@@ -232,7 +235,9 @@ export function loadSensationPrefs() {
 
 export function onSensationEvent(fn: (e: SensationEvent | null) => void) {
   listeners.add(fn);
-  return () => listeners.delete(fn);
+  return () => {
+    listeners.delete(fn);
+  };
 }
 
 function emit(e: SensationEvent | null) {
@@ -275,6 +280,10 @@ export function connectSuitEndpoint(url: string): SuitTransport {
           regions: pattern.regions,
         }),
       );
+    },
+    async sendRaw(payload) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify(payload));
     },
     disconnect() {
       ws?.close();
@@ -485,6 +494,11 @@ export async function playSensation(input: {
   phonePattern?: number[];
   facialSide?: "left" | "right" | "both";
   facialRegions?: string[];
+  /**
+   * Padrão facial já resolvido. Quando presente, o traje/máscara recebe
+   * o payload por região do rosto em vez do padrão genérico de corpo.
+   */
+  facialPattern?: FacialPattern;
 }): Promise<SensationEvent | null> {
   if (!prefs.enabled) return null;
   if (input.sourceKind === "memorial" && !prefs.memorialConsent) return null;
@@ -526,7 +540,16 @@ export async function playSensation(input: {
   }
   if (prefs.channels.suit && suit) {
     try {
-      await suit.sendPattern(suitPatternFor(input.gesture, intensity), event);
+      if (input.facialPattern) {
+        await suit.sendRaw(
+          facialToSuitPayload(input.facialPattern, {
+            personaId: input.personaId,
+            personaName: input.personaName,
+          }),
+        );
+      } else {
+        await suit.sendPattern(suitPatternFor(input.gesture, intensity), event);
+      }
       channels.push("suit");
     } catch {
       /* ignore */
@@ -630,6 +653,7 @@ export const Sensation = {
       phonePattern: facialPhonePattern(pattern),
       facialSide: pattern.side,
       facialRegions: Object.keys(pattern.regions),
+      facialPattern: pattern,
     });
   },
 };
@@ -676,4 +700,10 @@ export {
   DEFAULT_FACIAL_PREFS,
   FACIAL_PROTOCOL_DOC,
 } from "./facial-haptics";
-export type { FacialGesture, FacialContext, FaceRegion } from "./facial-haptics";
+export type {
+  FacialGesture,
+  FacialContext,
+  FaceRegion,
+  FacialPattern,
+  FacialPrefs,
+} from "./facial-haptics";
