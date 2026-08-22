@@ -59,15 +59,40 @@ export async function speakElevenLabs(text: string, voiceId: string): Promise<st
   }
 }
 
-/** API de clone (amostras do cofre). Placeholder de contrato. */
+/**
+ * Pede o clone da voz a partir das amostras do cofre.
+ *
+ * A voz é dado biométrico e sensível. O consentimento vai no pedido como
+ * registo — as flags de privacidade que a família ativou e a versão da política
+ * que aceitou — e é o **servidor** que o exige. Antes, o consentimento era um
+ * `true` escrito no código da UI.
+ */
 export async function requestVoiceClone(input: {
   personaId: string;
   name: string;
   sampleDataUrls: string[];
-  consent: boolean;
+  consent: {
+    allowVoiceClone: boolean;
+    memorialFamilyAuthority: boolean;
+    policyVersion: string;
+    acceptedAt: number;
+  };
 }): Promise<{ ok: true; voiceId: string } | { ok: false; error: string }> {
-  if (!input.consent) {
-    return { ok: false, error: "É preciso consentimento explícito da família para clonar a voz." };
+  if (!input.consent.allowVoiceClone) {
+    return {
+      ok: false,
+      error: "Ative o clone de voz em Lugares → Privacidade e LGPD antes de continuar.",
+    };
+  }
+  if (!input.consent.memorialFamilyAuthority) {
+    return {
+      ok: false,
+      error:
+        "É preciso declarar legitimidade familiar em Lugares → Privacidade e LGPD para clonar esta voz.",
+    };
+  }
+  if (!input.consent.acceptedAt) {
+    return { ok: false, error: "Aceite a política de privacidade antes de clonar a voz." };
   }
   if (input.sampleDataUrls.length < 1) {
     return { ok: false, error: "Envie ao menos uma nota de voz no cofre." };
@@ -79,17 +104,21 @@ export async function requestVoiceClone(input: {
       body: JSON.stringify({
         personaId: input.personaId,
         name: input.name,
+        consent: input.consent,
         samples: input.sampleDataUrls.slice(0, 5),
       }),
     });
     if (!res.ok) {
-      return {
-        ok: false,
-        error:
-          res.status === 404
-            ? "Clone de voz ainda não está ligado neste ambiente. Use o leitor do aparelho por enquanto."
-            : `Falha ao clonar voz (${res.status}).`,
-      };
+      if (res.status === 404) {
+        return {
+          ok: false,
+          error:
+            "Clone de voz ainda não está ligado neste ambiente. Use o leitor do aparelho por enquanto.",
+        };
+      }
+      // 400/409 trazem o motivo real (consentimento, tamanho, política antiga).
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      return { ok: false, error: body?.error ?? `Falha ao clonar voz (${res.status}).` };
     }
     const data = (await res.json()) as { voiceId: string };
     return { ok: true, voiceId: data.voiceId };

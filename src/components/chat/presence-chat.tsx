@@ -6,7 +6,7 @@ import { SoftExitBanner } from "@/components/legal/soft-exit-banner";
 import { chatWithPresence } from "@/lib/ai-client";
 import { recordMemorialMessage } from "@/lib/ethics";
 import { featureAllowed, loadPrivacyPrefs } from "@/lib/lgpd";
-import { buildSystemPrompt } from "@/lib/seed";
+import { toPersonaPrompt } from "@/lib/seed";
 import { MimeticBrain } from "@/lib/mimetic-brain";
 import { usePresence } from "@/lib/store";
 import type { Persona } from "@/lib/types";
@@ -36,14 +36,13 @@ export function PresenceChat({
     if (!text || busy) return;
     setDraft("");
 
-    // O prompt é composto aqui, não a cada tecla: `composeSystemPrompt` faz
-    // bootstrap do cérebro e uma passagem BM25F sobre todos os traços.
-    // A recuperação também fica mais correta com a mensagem enviada em vez
-    // de um rascunho parcial.
-    const prompt =
-      MimeticBrain.bootstrap(persona).composeSystemPrompt(text) ||
-      persona.soul?.systemPrompt ||
-      buildSystemPrompt(persona);
+    // A recuperação corre aqui, não a cada tecla: faz bootstrap do cérebro e
+    // uma passagem BM25F sobre todos os traços. Também fica mais correta com a
+    // mensagem enviada em vez de um rascunho parcial.
+    //
+    // Vai só o bloco recuperado: o prompt (e os limites éticos) é composto no
+    // servidor, a partir dos factos da persona.
+    const retrieved = MimeticBrain.bootstrap(persona).retrieveContext(text);
     const userMsg = {
       id: uid("msg"),
       personaId: persona.id,
@@ -66,8 +65,8 @@ export function PresenceChat({
       abortRef.current = controller;
       const res = await chatWithPresence(
         {
-          name: persona.name,
-          systemPrompt: prompt,
+          persona: toPersonaPrompt(persona),
+          retrieved,
           history,
           message: text,
         },

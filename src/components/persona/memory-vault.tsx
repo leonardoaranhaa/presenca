@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { awakenPresence } from "@/lib/ai-client";
+import { loadPrivacyPrefs } from "@/lib/lgpd";
 import { usePresence } from "@/lib/store";
 import type { Memory, MemoryKind, Persona } from "@/lib/types";
 import { compressImage, fileToDataUrl, uid } from "@/lib/utils";
@@ -29,6 +30,7 @@ export function MemoryVault({ persona }: { persona: Persona }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cloning, setCloning] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function onFile(file: File | undefined) {
@@ -221,29 +223,62 @@ export function MemoryVault({ persona }: { persona: Persona }) {
           type="button"
           variant="outline"
           className="w-full sm:w-auto"
+          disabled={cloning}
           onClick={async () => {
             const samples = persona.memories
               .filter((m) => m.kind === "voice" && m.mediaDataUrl)
               .map((m) => m.mediaDataUrl!);
-            const res = await requestVoiceClone({
-              personaId: persona.id,
-              name: persona.name,
-              sampleDataUrls: samples,
-              consent: true,
-            });
-            if (!res.ok) {
-              toast.error(res.error);
+            if (!samples.length) {
+              toast.error("Guarde ao menos uma nota de voz no cofre antes de clonar.");
               return;
             }
-            setVoiceProfile(persona.id, {
-              provider: "elevenlabs",
-              elevenLabsVoiceId: res.voiceId,
-              consentAt: Date.now(),
-            });
-            toast.success("Voz indexada no perfil da presença (ElevenLabs).");
+
+            // O consentimento vem das preferências que a família ativou, não de
+            // um valor escrito no código. O servidor volta a exigi-lo.
+            const prefs = loadPrivacyPrefs();
+            const consent = {
+              allowVoiceClone: prefs.allowVoiceClone,
+              memorialFamilyAuthority: prefs.memorialFamilyAuthority,
+              policyVersion: prefs.acceptedPolicyVersion,
+              acceptedAt: prefs.acceptedPolicyAt ?? 0,
+            };
+
+            // Clonar cria uma voz num fornecedor externo a partir da voz de
+            // alguém que já partiu. Não deve acontecer por um clique distraído.
+            if (
+              !confirm(
+                `Vai criar uma voz sintética de ${persona.name} a partir de ${samples.length} ` +
+                  `nota(s) do cofre, num fornecedor externo (ElevenLabs). ` +
+                  `Só faça isto com a concordância da família. Continuar?`,
+              )
+            ) {
+              return;
+            }
+
+            setCloning(true);
+            try {
+              const res = await requestVoiceClone({
+                personaId: persona.id,
+                name: persona.name,
+                sampleDataUrls: samples,
+                consent,
+              });
+              if (!res.ok) {
+                toast.error(res.error);
+                return;
+              }
+              setVoiceProfile(persona.id, {
+                provider: "elevenlabs",
+                elevenLabsVoiceId: res.voiceId,
+                consentAt: Date.now(),
+              });
+              toast.success("Voz indexada no perfil da presença (ElevenLabs).");
+            } finally {
+              setCloning(false);
+            }
           }}
         >
-          Clonar voz (ElevenLabs)
+          {cloning ? "A clonar…" : "Clonar voz (ElevenLabs)"}
         </Button>
       )}
       {persona.voiceProfile?.provider === "elevenlabs" && (

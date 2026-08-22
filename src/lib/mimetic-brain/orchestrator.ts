@@ -48,6 +48,23 @@ export class MimeticBrain {
     return this.model;
   }
 
+  /**
+   * Só o bloco do cérebro mimético (resumo, traços reforçados, memória
+   * recuperada) — sem prompt base nem guardrails. É isto que vai para o
+   * servidor, que compõe o resto.
+   */
+  retrieveContext(query: string): string {
+    const retrieved = skillRetrieve({
+      persona: this.persona,
+      model: this.model,
+      query,
+    }).output;
+    return (
+      skillComposePrompt({ persona: this.persona, model: this.model, query }, retrieved || "")
+        .output ?? ""
+    );
+  }
+
   composeSystemPrompt(query: string): string {
     const retrieved = skillRetrieve({
       persona: this.persona,
