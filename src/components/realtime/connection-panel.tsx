@@ -119,11 +119,11 @@ export function ConnectionPanel() {
           <code className="text-[10px] text-foreground">TURN_SECRET</code> (credenciais a expirar).
           Abaixo é fallback no browser (menos seguro).
         </p>
-        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+        <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm">
           <span>Usar servidor TURN</span>
           <input
             type="checkbox"
-            className="size-4 accent-[var(--accent)]"
+            className="size-5 shrink-0 accent-[var(--accent)]"
             checked={ice.enabled}
             onChange={(e) => setIce({ ...ice, enabled: e.target.checked })}
           />

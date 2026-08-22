@@ -48,8 +48,8 @@ function PlacesPage() {
             onClick={() => setQualityTier(t)}
             className={
               qualityTier === t
-                ? "h-9 rounded-full bg-primary px-3 text-xs text-primary-foreground"
-                : "h-9 rounded-full bg-surface-2 px-3 text-xs text-muted"
+                ? "h-11 rounded-full bg-primary px-4 text-xs text-primary-foreground"
+                : "h-11 rounded-full bg-surface-2 px-4 text-xs text-muted"
             }
           >
             {t}

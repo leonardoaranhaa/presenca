@@ -172,8 +172,8 @@ export function MemoryVault({ persona }: { persona: Persona }) {
                 onClick={() => setKind(k.id)}
                 className={
                   kind === k.id
-                    ? "inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-3 text-xs text-primary-foreground"
-                    : "inline-flex h-10 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-xs text-muted"
+                    ? "inline-flex h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-xs text-primary-foreground"
+                    : "inline-flex h-11 items-center gap-1.5 rounded-full bg-surface-2 px-4 text-xs text-muted"
                 }
               >
                 <Icon className="size-3.5" />

@@ -163,7 +163,7 @@ export function PresenceChat({
               {m.role === "presence" && (
                 <button
                   type="button"
-                  className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted hover:text-foreground"
+                  className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs text-muted hover:text-foreground"
                   onClick={() => speak(m.text)}
                 >
                   <Volume2 className="size-3" />

@@ -173,7 +173,7 @@ export function PersonaForm({ initial, kind }: { initial?: Persona; kind?: Prese
                 type="button"
                 onClick={() => toggleTrait(t)}
                 className={cn(
-                  "h-9 rounded-full px-3 text-xs",
+                  "h-11 rounded-full px-4 text-xs",
                   on ? "bg-accent text-accent-fg" : "bg-surface-2 text-muted",
                 )}
               >
@@ -193,7 +193,8 @@ export function PersonaForm({ initial, kind }: { initial?: Persona; kind?: Prese
               type="button"
               onClick={() => setP({ ...p, hue: h })}
               className={cn(
-                "size-9 rounded-full",
+                // size-11: escolher a cor da figura é um toque, não um clique de rato.
+                "size-11 rounded-full",
                 p.hue === h ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "",
               )}
               style={{ background: AVATAR_HUES[h].cloth }}
@@ -208,7 +209,7 @@ export function PersonaForm({ initial, kind }: { initial?: Persona; kind?: Prese
               type="button"
               onClick={() => setP({ ...p, hair: h.id })}
               className={cn(
-                "h-9 rounded-full px-3 text-xs",
+                "h-11 rounded-full px-4 text-xs",
                 p.hair === h.id ? "bg-primary text-primary-foreground" : "bg-surface-2 text-muted",
               )}
             >

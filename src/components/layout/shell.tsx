@@ -16,7 +16,10 @@ export function Shell({ children, flush = false }: { children: React.ReactNode; 
     <div className="relative min-h-dvh window-glow">
       <div className="grain" aria-hidden />
       <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md md:px-8">
-        <Link to="/" className="font-display text-xl tracking-tight text-foreground">
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center font-display text-xl tracking-tight text-foreground"
+        >
           Presença
         </Link>
         <nav className="flex items-center gap-1 rounded-full bg-surface/80 p-1 shadow-[var(--shadow-border)]">
@@ -27,8 +30,14 @@ export function Shell({ children, flush = false }: { children: React.ReactNode; 
               <Link
                 key={item.to}
                 to={item.to}
+                // O rótulo esconde-se abaixo de sm e sobra só o ícone: sem isto,
+                // quem usa leitor de ecrã não sabe para onde o link vai.
+                aria-label={item.label}
+                aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex h-10 items-center gap-2 rounded-full px-3 text-sm transition-colors duration-150",
+                  // h-11 (44px) é o mínimo tátil. Este produto é para a família toda,
+                  // incluindo quem já não acerta em alvos de 40px ao primeiro toque.
+                  "flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-3 text-sm transition-colors duration-150",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "text-muted hover:text-foreground",

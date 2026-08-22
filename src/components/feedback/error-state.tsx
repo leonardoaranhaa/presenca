@@ -42,7 +42,7 @@ export function ErrorState({
 
       {detalhe && (
         <details className="max-w-md text-left">
-          <summary className="cursor-pointer text-xs text-faint hover:text-muted">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center text-xs text-faint hover:text-muted">
             Detalhe técnico
           </summary>
           <pre className="mt-2 overflow-x-auto rounded-md bg-surface-2 p-3 text-left text-[11px] text-muted">
