@@ -16,6 +16,17 @@ export interface Memory {
   kind: MemoryKind;
   title: string;
   body: string;
+  /**
+   * Chave da media no IndexedDB (`src/lib/media-store.ts`).
+   * Os bytes não vivem aqui: o estado é persistido em localStorage, que tem
+   * ~5 MB, e uma dúzia de fotos chegava para o encher.
+   */
+  mediaId?: string;
+  /**
+   * @deprecated Media em base64 dentro do estado. Só existe em dados gravados
+   * antes da migração para IndexedDB; `migrateMediaToIndexedDb` move-a e limpa
+   * este campo. Não usar em código novo.
+   */
   mediaDataUrl?: string;
   createdAt: number;
 }

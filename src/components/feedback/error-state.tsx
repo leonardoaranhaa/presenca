@@ -24,8 +24,8 @@ export function ErrorState({
       <div className="max-w-md space-y-3">
         <h1 className="font-display text-3xl">{title}</h1>
         <p className="text-sm leading-relaxed text-muted">
-          O lar continua guardado neste aparelho — nada do que a família confiou se perdeu.
-          Pode tentar de novo, ou voltar à entrada.
+          O lar continua guardado neste aparelho — nada do que a família confiou se perdeu. Pode
+          tentar de novo, ou voltar à entrada.
         </p>
       </div>
 
