@@ -1,10 +1,15 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { Toaster } from "sonner";
+import { ErrorState, NotFoundState } from "@/components/feedback/error-state";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Presença";
 
 export const Route = createRootRoute({
+  // Sem isto, um erro de render dá ecrã branco sem saída. É especialmente
+  // provável no mundo 3D, que carrega GLB de URLs escritas pelo utilizador.
+  errorComponent: ({ error, reset }) => <ErrorState error={error} reset={reset} />,
+  notFoundComponent: () => <NotFoundState />,
   head: () => ({
     meta: [
       { charSet: "utf-8" },
