@@ -86,7 +86,7 @@ export function sampleMove(): { x: number; y: number } {
   if (k.has("KeyW") || k.has("ArrowUp")) y += 1;
   if (k.has("KeyS") || k.has("ArrowDown")) y -= 1;
 
-  const pads = typeof navigator !== "undefined" ? navigator.getGamepads?.() ?? [] : [];
+  const pads = typeof navigator !== "undefined" ? (navigator.getGamepads?.() ?? []) : [];
   for (const pad of pads) {
     if (!pad) continue;
     const ax = pad.axes[0] ?? 0;

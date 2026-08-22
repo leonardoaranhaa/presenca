@@ -14,14 +14,14 @@ cp .env.example .env   # opcional: sem chaves a app corre em modo degradado
 npm run dev            # http://localhost:8080
 ```
 
-| Comando | O que faz |
-|---------|-----------|
-| `npm run dev` | Servidor de desenvolvimento (porta 8080) |
-| `npm run build` | Build de produção (cliente + SSR) |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Testes (vitest) |
-| `npm run party:dev` | Servidor PartyKit local |
-| `npm run party:deploy` | Publicar o PartyKit |
+| Comando                | O que faz                                |
+| ---------------------- | ---------------------------------------- |
+| `npm run dev`          | Servidor de desenvolvimento (porta 8080) |
+| `npm run build`        | Build de produção (cliente + SSR)        |
+| `npm run typecheck`    | `tsc --noEmit`                           |
+| `npm test`             | Testes (vitest)                          |
+| `npm run party:dev`    | Servidor PartyKit local                  |
+| `npm run party:deploy` | Publicar o PartyKit                      |
 
 Sem `XAI_API_KEY` a app arranca e navega-se pelo mundo; a conversa responde 503 e
 a UI avisa. Sem `ELEVENLABS_API_KEY` a presença fala pelo leitor do aparelho.

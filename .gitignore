@@ -1,15 +1,29 @@
+# dependências
 node_modules/
+
+# build
 dist/
 .output/
+.nitro/
 .vinxi/
 .tanstack/
-.nitro/
+.vite/
+.vercel/
 .partykit/
-*.local
+
+# ambiente
 .env
 .env.*
 !.env.example
+
+# sistema / editor
 .DS_Store
+Thumbs.db
 *.log
-.vite/
-src/routeTree.gen.ts
+*.local
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

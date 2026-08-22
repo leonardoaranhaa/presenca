@@ -43,8 +43,16 @@ export function SimpleRoom({ metrics }: { metrics: RoomMetrics }) {
       <Wall position={[-hw, h / 2, 0]} size={[t, h, m.depthM]} map={plaster} />
       <Wall position={[hw, h / 2, 0]} size={[t, h, m.depthM]} map={plaster} />
       {/* frente com vão de porta */}
-      <Wall position={[-(door / 2 + frontLeft / 2), h / 2, hd]} size={[frontLeft, h, t]} map={plaster} />
-      <Wall position={[door / 2 + frontLeft / 2, h / 2, hd]} size={[frontLeft, h, t]} map={plaster} />
+      <Wall
+        position={[-(door / 2 + frontLeft / 2), h / 2, hd]}
+        size={[frontLeft, h, t]}
+        map={plaster}
+      />
+      <Wall
+        position={[door / 2 + frontLeft / 2, h / 2, hd]}
+        size={[frontLeft, h, t]}
+        map={plaster}
+      />
       <Wall position={[0, h - 0.35, hd]} size={[door + 0.1, 0.7, t]} map={plaster} />
 
       {/* janelas na parede do fundo */}

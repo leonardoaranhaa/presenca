@@ -124,11 +124,7 @@ export function PrivacyPanel() {
           type="button"
           variant="outline"
           onClick={() => {
-            if (
-              confirm(
-                "Apagar personas, memórias e chat deste aparelho? Esta ação não desfaz.",
-              )
-            ) {
+            if (confirm("Apagar personas, memórias e chat deste aparelho? Esta ação não desfaz.")) {
               wipeLocal();
               setMsg("Dados locais apagados.");
             }

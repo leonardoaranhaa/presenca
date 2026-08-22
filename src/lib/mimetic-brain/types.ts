@@ -6,11 +6,7 @@
 import type { Memory, Persona } from "@/lib/types";
 
 export type MimeticTraceKind =
-  | "memory"
-  | "chat_user"
-  | "chat_presence"
-  | "correction"
-  | "style_hint";
+  "memory" | "chat_user" | "chat_presence" | "correction" | "style_hint";
 
 /** Campos para BM25F (pesos diferentes por campo). */
 export type MimeticFieldName = "title" | "body" | "kind" | "correction" | "chat";
@@ -42,12 +38,7 @@ export type MimeticModel = {
 };
 
 export type MimeticSkillName =
-  | "ingest_memory"
-  | "ingest_chat"
-  | "retrieve"
-  | "evolve"
-  | "compose_prompt"
-  | "answer";
+  "ingest_memory" | "ingest_chat" | "retrieve" | "evolve" | "compose_prompt" | "answer";
 
 export type SkillContext = {
   persona: Persona;

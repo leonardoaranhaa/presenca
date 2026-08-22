@@ -152,7 +152,11 @@ export async function chatWithPresence(
   }));
 
   return providerChat(
-    [{ role: "system", content: data.systemPrompt }, ...history, { role: "user", content: message }],
+    [
+      { role: "system", content: data.systemPrompt },
+      ...history,
+      { role: "user", content: message },
+    ],
     350,
     signal,
   );
@@ -170,9 +174,7 @@ export async function awakenPresence(
   data: AwakenInput,
   signal?: AbortSignal,
 ): Promise<{ ok: true; soul: Soul } | AiFailure> {
-  const memoryText = data.memories
-    .map((m) => `- (${m.kind}) ${m.title}: ${m.body}`)
-    .join("\n");
+  const memoryText = data.memories.map((m) => `- (${m.kind}) ${m.title}: ${m.body}`).join("\n");
 
   const instruction = `Analise as memórias de ${data.name} (${data.relationship}, ${
     data.kind === "memorial" ? "pessoa falecida, reconstrução memorial" : "persona viva"

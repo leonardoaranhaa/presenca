@@ -117,9 +117,12 @@ function ScannedPlayerBody({
         currentRole.current = "idle";
       }
       if (typeof window !== "undefined") {
-        (window as unknown as { __avatarAnimMode?: string; __mixamoClips?: string[] }).__avatarAnimMode =
-          "clips";
-        (window as unknown as { __mixamoClips?: string[] }).__mixamoClips = clips.map((c) => c.name);
+        (
+          window as unknown as { __avatarAnimMode?: string; __mixamoClips?: string[] }
+        ).__avatarAnimMode = "clips";
+        (window as unknown as { __mixamoClips?: string[] }).__mixamoClips = clips.map(
+          (c) => c.name,
+        );
       }
       return () => {
         mixer.stopAllAction();
@@ -130,9 +133,12 @@ function ScannedPlayerBody({
     if (boneCount >= 3) {
       mode.current = "bones";
       if (typeof window !== "undefined") {
-        (window as unknown as { __avatarAnimMode?: string; __boneRoles?: string[] }).__avatarAnimMode =
-          "bones";
-        (window as unknown as { __boneRoles?: string[] }).__boneRoles = Object.keys(boneMap.current);
+        (
+          window as unknown as { __avatarAnimMode?: string; __boneRoles?: string[] }
+        ).__avatarAnimMode = "bones";
+        (window as unknown as { __boneRoles?: string[] }).__boneRoles = Object.keys(
+          boneMap.current,
+        );
       }
       return;
     }
@@ -183,8 +189,7 @@ function ScannedPlayerBody({
       const left = hugUntil.current - now;
       const dur = 1200;
       const e = 1 - left / dur;
-      hugAmt.current =
-        e < 0.2 ? e / 0.2 : e < 0.65 ? 1 : Math.max(0, 1 - (e - 0.65) / 0.35);
+      hugAmt.current = e < 0.2 ? e / 0.2 : e < 0.65 ? 1 : Math.max(0, 1 - (e - 0.65) / 0.35);
     } else {
       hugAmt.current = 0;
     }

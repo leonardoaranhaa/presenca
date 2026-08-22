@@ -152,7 +152,10 @@ function buildOccupancyGrid(
       const i = r * cols + c;
       if (walkable[i]) {
         // prefere perto do centro
-        if (seed < 0 || Math.hypot(c - cx, r - cz) < Math.hypot((seed % cols) - cx, Math.floor(seed / cols) - cz)) {
+        if (
+          seed < 0 ||
+          Math.hypot(c - cx, r - cz) < Math.hypot((seed % cols) - cx, Math.floor(seed / cols) - cz)
+        ) {
           seed = i;
         }
       }
@@ -181,12 +184,7 @@ function buildOccupancyGrid(
     for (let c = 1; c < cols - 1; c++) {
       const i = r * cols + c;
       if (!walkable[i]) continue;
-      if (
-        !walkable[i - 1] ||
-        !walkable[i + 1] ||
-        !walkable[i - cols] ||
-        !walkable[i + cols]
-      ) {
+      if (!walkable[i - 1] || !walkable[i + 1] || !walkable[i - cols] || !walkable[i + cols]) {
         eroded[i] = 0;
       }
     }

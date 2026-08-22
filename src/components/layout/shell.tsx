@@ -29,7 +29,9 @@ export function Shell({ children, flush = false }: { children: React.ReactNode; 
                 to={item.to}
                 className={cn(
                   "flex h-10 items-center gap-2 rounded-full px-3 text-sm transition-colors duration-150",
-                  active ? "bg-primary text-primary-foreground" : "text-muted hover:text-foreground",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted hover:text-foreground",
                 )}
               >
                 <Icon className="size-4" />
@@ -39,7 +41,9 @@ export function Shell({ children, flush = false }: { children: React.ReactNode; 
           })}
         </nav>
       </header>
-      <div className={cn(flush ? "" : "mx-auto w-full max-w-5xl px-4 pb-16 md:px-8")}>{children}</div>
+      <div className={cn(flush ? "" : "mx-auto w-full max-w-5xl px-4 pb-16 md:px-8")}>
+        {children}
+      </div>
     </div>
   );
 }

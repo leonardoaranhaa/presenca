@@ -27,13 +27,7 @@ const HAIR: { id: HairStyle; label: string }[] = [
   { id: "bald", label: "Ralo" },
 ];
 
-export function PersonaForm({
-  initial,
-  kind,
-}: {
-  initial?: Persona;
-  kind?: PresenceKind;
-}) {
+export function PersonaForm({ initial, kind }: { initial?: Persona; kind?: PresenceKind }) {
   const navigate = useNavigate();
   const upsert = usePresence((s) => s.upsertPersona);
   const [p, setP] = useState<Persona>(initial ?? newPersonaDraft(kind ?? "memorial"));
@@ -74,7 +68,9 @@ export function PersonaForm({
               <span className="block font-medium text-inherit">
                 {k === "living" ? "Pessoa viva" : "Presença memorial"}
               </span>
-              <span className={cn("mt-1 block text-xs", p.kind === k ? "opacity-70" : "text-faint")}>
+              <span
+                className={cn("mt-1 block text-xs", p.kind === k ? "opacity-70" : "text-faint")}
+              >
                 {k === "living" ? "Quem ainda caminha no mundo" : "Quem permanece na memória"}
               </span>
             </button>

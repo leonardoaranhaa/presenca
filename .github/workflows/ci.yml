@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancela execuções antigas do mesmo PR quando chega um push novo.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Tipos, lint, testes e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Formatação
+        run: npm run format:check
+
+      - name: Testes
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # src/routeTree.gen.ts é gerado pelo build mas está versionado, porque o
+      # typecheck precisa dele para resolver os tipos de cada rota. Se o build
+      # o alterou, quem fez o commit esqueceu-se de o incluir.
+      - name: Rota gerada está actualizada
+        run: |
+          if ! git diff --exit-code src/routeTree.gen.ts; then
+            echo "::error::src/routeTree.gen.ts está desactualizado. Corra 'npm run build' e inclua o ficheiro no commit."
+            exit 1
+          fi
+
+  e2e:
+    name: Ponta a ponta
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Testes de ponta a ponta
+        run: npm run test:e2e
+
+      - name: Guardar relatório em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

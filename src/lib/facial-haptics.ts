@@ -11,13 +11,7 @@
 import type { HugContext } from "./sensation";
 
 export type FaceRegion =
-  | "forehead"
-  | "left_cheek"
-  | "right_cheek"
-  | "jaw"
-  | "temple_left"
-  | "temple_right"
-  | "bridge"; // nariz / ponte — toque muito leve
+  "forehead" | "left_cheek" | "right_cheek" | "jaw" | "temple_left" | "temple_right" | "bridge"; // nariz / ponte — toque muito leve
 
 export type FacialGesture =
   | "cheek_kiss" // beijo no rosto (familiar)
@@ -120,19 +114,20 @@ export function resolveFacialPattern(
   const scale = facialPrefs.intensityScale;
   let intensity = 0.45 * scale;
   let durationMs = 500;
-  let side: FacialPattern["side"] = "right";
   const frameMs = 40;
 
-  // Lado
-  if (facialPrefs.preferredCheek === "auto") {
-    // hash do nome → lado estável por persona (não muda entre sessões)
-    const seed = (ctx.personaId || ctx.personaName || "x")
-      .split("")
-      .reduce((a, c) => a + c.charCodeAt(0), 0);
-    side = seed % 2 === 0 ? "left" : "right";
-  } else {
-    side = facialPrefs.preferredCheek;
-  }
+  // Lado: preferência explícita, ou hash do nome → lado estável por persona
+  // (não muda entre sessões).
+  let side: FacialPattern["side"] =
+    facialPrefs.preferredCheek === "auto"
+      ? (ctx.personaId || ctx.personaName || "x")
+          .split("")
+          .reduce((a, c) => a + c.charCodeAt(0), 0) %
+          2 ===
+        0
+        ? "left"
+        : "right"
+      : facialPrefs.preferredCheek;
 
   const rel = ctx.relationship || "";
   if (PARENT.test(rel)) {
@@ -225,10 +220,13 @@ export function facialPhonePattern(pattern: FacialPattern): number[] {
 /**
  * Payload para máscara / HMD facial (mesmo espírito do traje).
  */
-export function facialToSuitPayload(pattern: FacialPattern, meta: {
-  personaId?: string;
-  personaName?: string;
-}) {
+export function facialToSuitPayload(
+  pattern: FacialPattern,
+  meta: {
+    personaId?: string;
+    personaName?: string;
+  },
+) {
   return {
     type: "facial_haptic_pattern" as const,
     gesture: pattern.gesture,

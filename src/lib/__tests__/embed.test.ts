@@ -37,7 +37,11 @@ describe("embedText", () => {
 describe("BM25F", () => {
   const docs = [
     { id: "a", text: "goiabeira", fields: { title: "A goiabeira", body: "plantou em 1974" } },
-    { id: "b", text: "café", fields: { title: "O café", body: "falava da goiabeira ao passar o café" } },
+    {
+      id: "b",
+      text: "café",
+      fields: { title: "O café", body: "falava da goiabeira ao passar o café" },
+    },
   ];
 
   it("pesa o título acima do corpo", () => {

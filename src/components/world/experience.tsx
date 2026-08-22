@@ -42,11 +42,7 @@ export function WorldExperience() {
   // Leitura única: a pose guardada só semeia a posição inicial. Subscrevê-la
   // faria o Canvas inteiro re-renderizar a cada gravação.
   const pos = useRef(
-    new THREE.Vector3(
-      usePresence.getState().pose.x,
-      0,
-      usePresence.getState().pose.z,
-    ),
+    new THREE.Vector3(usePresence.getState().pose.x, 0, usePresence.getState().pose.z),
   );
   const yawRef = useRef(usePresence.getState().pose.yaw);
   const lastSave = useRef(0);
@@ -81,7 +77,6 @@ export function WorldExperience() {
     const body = personas.find((p) => p.isPlayer)?.bodyScan?.glbUrl;
     if (body) preloadPlayerAvatar(body);
   }, [personas]);
-
 
   useEffect(() => {
     if (!entered) return;
@@ -182,7 +177,9 @@ export function WorldExperience() {
         ) : place?.layout === "simple-room" ? (
           <SimpleRoom metrics={place?.metrics ?? DEFAULT_METRICS} />
         ) : place?.layout === "garden-only" ? (
-          <SimpleRoom metrics={{ widthM: 8, depthM: 8, heightM: 0.1, windowCount: 0, doorWidthM: 2 }} />
+          <SimpleRoom
+            metrics={{ widthM: 8, depthM: 8, heightM: 0.1, windowCount: 0, doorWidthM: 2 }}
+          />
         ) : (
           <House />
         )}
@@ -227,10 +224,7 @@ export function WorldExperience() {
             }
           }}
         />
-        <NavClickTarget
-          playerPos={pos.current}
-          enabled={entered && !activeChatId}
-        />
+        <NavClickTarget playerPos={pos.current} enabled={entered && !activeChatId} />
         <PlayerPathRibbon />
         <FamilyFigures
           personas={personas}

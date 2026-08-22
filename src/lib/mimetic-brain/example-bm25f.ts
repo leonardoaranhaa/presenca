@@ -25,9 +25,7 @@ const SAMPLE_DOCS = [
       body: "Ele plantou a goiabeira no dia em que a neta nasceu. Árvore e gente precisam de tempo e água.",
       kind: "story",
     },
-    vector: embedText(
-      "A goiabeira. Ele plantou a goiabeira no dia em que a neta nasceu.",
-    ),
+    vector: embedText("A goiabeira. Ele plantou a goiabeira no dia em que a neta nasceu."),
   },
   {
     id: "m2",
@@ -48,9 +46,7 @@ const SAMPLE_DOCS = [
       correction: "Na verdade ele nunca dizia eu te amo — dizia come que esfria.",
       chat: "Na verdade ele nunca dizia eu te amo — dizia come que esfria.",
     },
-    vector: embedText(
-      "Na verdade ele nunca dizia eu te amo — dizia come que esfria.",
-    ),
+    vector: embedText("Na verdade ele nunca dizia eu te amo — dizia come que esfria."),
   },
 ];
 

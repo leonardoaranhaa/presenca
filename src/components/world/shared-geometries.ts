@@ -36,10 +36,7 @@ export function geoPlane() {
 }
 
 /** Escala um box unitário (1x1x1) para size [w,h,d]. */
-export function scaleBox(
-  mesh: THREE.Mesh,
-  size: [number, number, number],
-) {
+export function scaleBox(mesh: THREE.Mesh, size: [number, number, number]) {
   mesh.scale.set(size[0], size[1], size[2]);
 }
 
