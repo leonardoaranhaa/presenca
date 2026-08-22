@@ -11,9 +11,6 @@ dist/
 .vercel/
 .partykit/
 
-# gerado — o plugin do TanStack Router recria em cada build
-src/routeTree.gen.ts
-
 # ambiente
 .env
 .env.*

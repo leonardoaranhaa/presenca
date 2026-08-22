@@ -14,8 +14,10 @@ npm run lint:fix     # corrige o que dá
 npm run format       # prettier
 ```
 
-`npm run build` gera `src/routeTree.gen.ts`. É ignorado pelo git de propósito —
-não o editar nem versionar.
+`npm run build` gera `src/routeTree.gen.ts`. **Está versionado de propósito**: o
+`typecheck` precisa dele para resolver os tipos de cada rota, portanto sem ele um
+clone limpo não compila. Não o editar à mão — mudar rotas, correr `npm run build`
+e incluir o ficheiro no commit. O CI recusa se estiver desactualizado.
 
 ## A regra que não se quebra
 
