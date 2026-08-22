@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { awakenPresence } from "@/lib/ai-client";
 import { loadPrivacyPrefs } from "@/lib/lgpd";
+import { isStorageFull } from "@/lib/store";
 import { usePresence } from "@/lib/store";
 import type { Memory, MemoryKind, Persona } from "@/lib/types";
 import { useMediaUrl } from "@/lib/use-media-url";
@@ -33,6 +34,7 @@ export function MemoryVault({ persona }: { persona: Persona }) {
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [cloning, setCloning] = useState(false);
+  const [semEspaco, setSemEspaco] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   /** Limite por ficheiro. O IndexedDB aguenta mais, mas um vídeo enorme no
@@ -80,7 +82,13 @@ export function MemoryVault({ persona }: { persona: Persona }) {
 
       setTitle("");
       setBody("");
-      toast.success("Memória guardada.");
+      if (isStorageFull()) {
+        setSemEspaco(true);
+        toast.error("Sem espaço neste aparelho — a memória pode não ter ficado guardada.");
+      } else {
+        setSemEspaco(false);
+        toast.success("Memória guardada.");
+      }
     } catch {
       toast.error("Não foi possível ler o arquivo.");
     }
@@ -101,7 +109,13 @@ export function MemoryVault({ persona }: { persona: Persona }) {
     addMemory(persona.id, mem);
     setTitle("");
     setBody("");
-    toast.success("Memória guardada.");
+    if (isStorageFull()) {
+      setSemEspaco(true);
+      toast.error("Sem espaço neste aparelho — a memória pode não ter ficado guardada.");
+    } else {
+      setSemEspaco(false);
+      toast.success("Memória guardada.");
+    }
   }
 
   async function awaken() {
@@ -195,6 +209,19 @@ export function MemoryVault({ persona }: { persona: Persona }) {
           </Button>
         )}
       </Card>
+
+      {semEspaco && (
+        <div
+          className="rounded-md bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted shadow-[var(--shadow-border)]"
+          role="alert"
+        >
+          <strong className="font-medium text-foreground">
+            O armazenamento deste aparelho está cheio.
+          </strong>{" "}
+          As memórias novas podem não ficar guardadas. Exporte os dados em Lugares → Privacidade e
+          LGPD antes de continuar, ou liberte espaço no browser.
+        </div>
+      )}
 
       <div className="space-y-3">
         {persona.memories.length === 0 && (
