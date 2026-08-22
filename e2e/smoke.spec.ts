@@ -125,3 +125,39 @@ test.describe("caminhos de falha", () => {
     await ctx.close();
   });
 });
+
+test.describe("a UI declara o estado real dos serviços", () => {
+  test("/api/status diz o que está ligado sem expor segredos", async ({ request }) => {
+    const res = await request.get("/api/status");
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(typeof body.chat).toBe("boolean");
+    expect(typeof body.voiceClone).toBe("boolean");
+    expect(["ephemeral", "static", "stun-only"]).toContain(body.turn);
+    // Nenhum valor de chave pode sair daqui.
+    expect(JSON.stringify(body)).not.toMatch(/sk-|xai-|[A-Za-z0-9_-]{32,}/);
+  });
+
+  test("sem chave, a conversa avisa antes de a pessoa escrever", async ({ page }) => {
+    await page.goto("/circle");
+    await page.getByText("Antônio Oliveira").click();
+
+    const aviso = page.getByText(/voz da presença ainda não está ligada/i);
+    const campo = page.getByPlaceholder(/voz da presença não está ligada/i);
+
+    // O ambiente de teste não tem XAI_API_KEY, portanto o aviso tem de aparecer.
+    await expect(aviso).toBeVisible({ timeout: 15_000 });
+    await expect(campo).toBeDisabled();
+  });
+
+  test("o painel de lugares mostra o que está ligado", async ({ page }) => {
+    await page.goto("/places");
+    await expect(page.getByRole("heading", { name: /o que está ligado/i })).toBeVisible();
+    await expect(page.getByText(/voz da presença/i).first()).toBeVisible();
+  });
+
+  test("o modo local avisa que a família não se encontra", async ({ page }) => {
+    await page.goto("/places");
+    await expect(page.getByText(/neste modo a família não se encontra/i)).toBeVisible();
+  });
+});

@@ -9,9 +9,20 @@ import { featureAllowed, loadPrivacyPrefs } from "@/lib/lgpd";
 import { toPersonaPrompt } from "@/lib/seed";
 import { MimeticBrain } from "@/lib/mimetic-brain";
 import { usePresence } from "@/lib/store";
-import type { Persona } from "@/lib/types";
+import { useServiceStatus } from "@/lib/use-service-status";
+import type { ChatMessage, Persona } from "@/lib/types";
 import { cn, uid } from "@/lib/utils";
 import { speakPresence } from "@/lib/voice";
+
+/**
+ * Referência estável para "sem mensagens".
+ *
+ * `?? []` criava um array novo a cada chamada do seletor. O zustand usa
+ * `useSyncExternalStore`, que compara snapshots por identidade: um valor
+ * sempre diferente dá "Maximum update depth exceeded" e a conversa nem chega a
+ * renderizar. É a razão da regra sobre seletores no CLAUDE.md.
+ */
+const SEM_MENSAGENS: ChatMessage[] = [];
 
 export function PresenceChat({
   persona,
@@ -20,11 +31,13 @@ export function PresenceChat({
   persona: Persona;
   compact?: boolean;
 }) {
-  const messages = usePresence((s) => s.messages[persona.id] ?? []);
+  const messages = usePresence((s) => s.messages[persona.id] ?? SEM_MENSAGENS);
   const pushMessage = usePresence((s) => s.pushMessage);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [wellnessTick, setWellnessTick] = useState(0);
+  const servicos = useServiceStatus();
+  const conversaIndisponivel = servicos?.chat === false;
   const scroller = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -116,6 +129,15 @@ export function PresenceChat({
           <SoftExitBanner tick={wellnessTick} />
         </div>
       )}
+      {conversaIndisponivel && (
+        <div
+          className="mb-2 rounded-md bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted shadow-[var(--shadow-border)]"
+          role="status"
+        >
+          A voz da presença ainda não está ligada neste ambiente. Pode guardar memórias no cofre —
+          quando a voz for configurada, ela responde a partir delas.
+        </div>
+      )}
       <div ref={scroller} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-2">
         {messages.length === 0 && (
           <p className="px-2 py-6 text-center text-sm text-muted">
@@ -163,11 +185,21 @@ export function PresenceChat({
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={`Falar com ${persona.name.split(" ")[0]}…`}
+          disabled={conversaIndisponivel}
+          placeholder={
+            conversaIndisponivel
+              ? "A voz da presença não está ligada"
+              : `Falar com ${persona.name.split(" ")[0]}…`
+          }
           className="h-11 min-w-0 flex-1 rounded-md bg-surface-2 px-3 text-sm shadow-[var(--shadow-border)] placeholder:text-faint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
           maxLength={2000}
         />
-        <Button type="submit" size="icon" disabled={busy || !draft.trim()} aria-label="Enviar">
+        <Button
+          type="submit"
+          size="icon"
+          disabled={busy || !draft.trim() || conversaIndisponivel}
+          aria-label="Enviar"
+        >
           <Send />
         </Button>
       </form>

@@ -16,6 +16,7 @@ import { Route as PlacesRouteImport } from './routes/places'
 import { Route as WorldRouteImport } from './routes/world'
 import { Route as ApiAwakenRouteImport } from './routes/api/awaken'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiStatusRouteImport } from './routes/api/status'
 import { Route as PersonaIdRouteImport } from './routes/persona.$id'
 import { Route as ApiTurnCredentialsRouteImport } from './routes/api/turn/credentials'
 import { Route as ApiVoiceCloneRouteImport } from './routes/api/voice/clone'
@@ -56,6 +57,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStatusRoute = ApiStatusRouteImport.update({
+  id: '/api/status',
+  path: '/api/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PersonaIdRoute = PersonaIdRouteImport.update({
   id: '/persona/$id',
   path: '/persona/$id',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/world': typeof WorldRoute
   '/api/awaken': typeof ApiAwakenRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/status': typeof ApiStatusRoute
   '/persona/$id': typeof PersonaIdRoute
   '/api/turn/credentials': typeof ApiTurnCredentialsRoute
   '/api/voice/clone': typeof ApiVoiceCloneRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/world': typeof WorldRoute
   '/api/awaken': typeof ApiAwakenRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/status': typeof ApiStatusRoute
   '/persona/$id': typeof PersonaIdRoute
   '/api/turn/credentials': typeof ApiTurnCredentialsRoute
   '/api/voice/clone': typeof ApiVoiceCloneRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/world': typeof WorldRoute
   '/api/awaken': typeof ApiAwakenRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/status': typeof ApiStatusRoute
   '/persona/$id': typeof PersonaIdRoute
   '/api/turn/credentials': typeof ApiTurnCredentialsRoute
   '/api/voice/clone': typeof ApiVoiceCloneRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/api/awaken'
     | '/api/chat'
+    | '/api/status'
     | '/persona/$id'
     | '/api/turn/credentials'
     | '/api/voice/clone'
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/api/awaken'
     | '/api/chat'
+    | '/api/status'
     | '/persona/$id'
     | '/api/turn/credentials'
     | '/api/voice/clone'
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/api/awaken'
     | '/api/chat'
+    | '/api/status'
     | '/persona/$id'
     | '/api/turn/credentials'
     | '/api/voice/clone'
@@ -167,6 +179,7 @@ export interface RootRouteChildren {
   WorldRoute: typeof WorldRoute
   ApiAwakenRoute: typeof ApiAwakenRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiStatusRoute: typeof ApiStatusRoute
   PersonaIdRoute: typeof PersonaIdRoute
   ApiTurnCredentialsRoute: typeof ApiTurnCredentialsRoute
   ApiVoiceCloneRoute: typeof ApiVoiceCloneRoute
@@ -224,6 +237,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/status': {
+      id: '/api/status'
+      path: '/api/status'
+      fullPath: '/api/status'
+      preLoaderRoute: typeof ApiStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/persona/$id': {
       id: '/persona/$id'
       path: '/persona/$id'
@@ -263,6 +283,7 @@ const rootRouteChildren: RootRouteChildren = {
   WorldRoute: WorldRoute,
   ApiAwakenRoute: ApiAwakenRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiStatusRoute: ApiStatusRoute,
   PersonaIdRoute: PersonaIdRoute,
   ApiTurnCredentialsRoute: ApiTurnCredentialsRoute,
   ApiVoiceCloneRoute: ApiVoiceCloneRoute,

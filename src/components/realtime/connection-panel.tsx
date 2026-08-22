@@ -47,6 +47,20 @@ export function ConnectionPanel() {
         </div>
       </div>
 
+      {cfg.provider === "local" && (
+        <div
+          className="rounded-md bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted shadow-[var(--shadow-border)]"
+          role="status"
+        >
+          <strong className="font-medium text-foreground">
+            Neste modo a família não se encontra.
+          </strong>{" "}
+          O modo local só liga separadores abertos neste mesmo browser — serve para experimentar
+          sozinho. Para duas pessoas em aparelhos diferentes estarem no mesmo lugar é preciso o
+          PartyKit, publicado à parte.
+        </div>
+      )}
+
       <div className="space-y-1.5">
         <Label>Modo</Label>
         <select
