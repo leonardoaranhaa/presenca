@@ -54,6 +54,28 @@ Se o teu PR toca em memórias, voz, scan do corpo, chat ou pose:
 2. Confirma que existe uma flag de consentimento em `PrivacyPrefs`
 3. Confirma que a exportação e a eliminação continuam a cobrir o dado novo
 
+## Verificar o estado dos serviços
+
+`GET /api/status` diz o que está configurado neste ambiente (só booleanos,
+nunca valores de chaves). A UI usa-o para não prometer o que não pode cumprir:
+
+```bash
+curl -s localhost:8080/api/status
+# {"chat":false,"voiceClone":false,"turn":"stun-only"}
+```
+
+## Investigar uma falha
+
+Cada resposta traz `x-request-id`, e cada pedido escreve uma linha JSON no log
+com o mesmo id, o estado e a duração:
+
+```json
+{ "ts": "…", "nivel": "warn", "evento": "chat", "requestId": "t07jjx7r", "status": 400, "ms": 4 }
+```
+
+Quem reportar um problema pode citar o id. O log **nunca** inclui conteúdo de
+memórias, mensagens ou media — só metadados.
+
 ## Testes
 
 `vitest`, ao lado do que testam (`__tests__/`). O que vale mesmo a pena testar
