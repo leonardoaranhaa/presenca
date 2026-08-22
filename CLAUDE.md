@@ -92,6 +92,19 @@ isso quando lhe perguntam. Não é a pessoa e não finge ser.
 - Voz clonada e scan do corpo são dados sensíveis: exigem consentimento
   explícito.
 
+## Alvo de plataforma
+
+**Todo o desenvolvimento é no web app.** O mobile nativo só entra quando houver
+um produto vendável — não antes.
+
+Isto não é o mesmo que ignorar o telemóvel: o web app é responsivo e continua a
+ser usado no browser do telefone. O que muda é a prioridade — não se investe em
+app nativa, nem se distorce a arquitetura por causa dela.
+
+O trabalho de alvos de toque e nomes acessíveis que já está feito serve o web
+app na mesma: ajuda em portáteis com ecrã tátil, e os nomes acessíveis são
+requisito de acessibilidade em qualquer ecrã.
+
 ## Estado do projeto
 
 `PLANO.md` tem o diagnóstico, o que está feito e o que falta por ordem.
