@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { awakenPresence } from "@/lib/ai";
+import { awakenPresence } from "@/lib/ai-client";
 import { usePresence } from "@/lib/store";
 import type { Memory, MemoryKind, Persona } from "@/lib/types";
 import { compressImage, fileToDataUrl, uid } from "@/lib/utils";
