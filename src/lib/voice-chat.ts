@@ -20,7 +20,10 @@ type PeerLink = {
   pc: RTCPeerConnection;
   audio?: HTMLAudioElement;
   makingOffer: boolean;
+  /** id menor = polite: cede numa colisão de ofertas (perfect negotiation) */
   polite: boolean;
+  /** oferta descartada — os ICE candidates que chegarem a seguir são ignorados */
+  ignoreOffer: boolean;
 };
 
 export type VoiceChatState = {
@@ -198,8 +201,21 @@ export class VoiceChat {
       case "voice-join":
         if (payload.peerId === this.selfId) return;
         if (payload.placeId !== this.placeId) return;
-        // deterministic polite peer (menor id é polite)
-        await this.ensurePeer(payload.peerId, this.selfId < payload.peerId);
+        // Quem já estava na sala responde, senão quem chega nunca fica a
+        // saber que os outros existem (só o join é difundido).
+        this.send({
+          kind: "voice-here",
+          peerId: this.selfId,
+          displayName: this.displayName,
+          placeId: this.placeId,
+          to: payload.peerId,
+        });
+        await this.ensurePeer(payload.peerId);
+        break;
+      case "voice-here":
+        if (payload.to !== this.selfId) return;
+        if (payload.placeId !== this.placeId) return;
+        await this.ensurePeer(payload.peerId);
         break;
       case "voice-leave":
         if (payload.peerId !== this.selfId) await this.removePeer(payload.peerId);
@@ -219,11 +235,24 @@ export class VoiceChat {
     }
   }
 
-  private async ensurePeer(peerId: string, polite: boolean) {
+  /**
+   * Cria (uma vez) a ligação com um peer.
+   *
+   * O papel é decidido pela comparação dos ids, igual dos dois lados: o id
+   * menor é "polite" (cede numa colisão de ofertas) e o maior é quem oferece.
+   * Assim nenhum par fica à espera do outro.
+   */
+  private async ensurePeer(peerId: string) {
     if (this.peers.has(peerId) || !this.localStream) return;
+    const polite = this.selfId < peerId;
     const iceServers = await resolveIceServers();
+
+    // resolveIceServers é assíncrono: outro sinal pode ter criado a ligação
+    // entretanto, e duas RTCPeerConnection para o mesmo peer nunca fecham.
+    if (this.peers.has(peerId) || !this.localStream || !this.active) return;
+
     const pc = new RTCPeerConnection({ iceServers });
-    const link: PeerLink = { pc, makingOffer: false, polite };
+    const link: PeerLink = { pc, makingOffer: false, polite, ignoreOffer: false };
     this.peers.set(peerId, link);
 
     for (const track of this.localStream.getAudioTracks()) {
@@ -257,6 +286,7 @@ export class VoiceChat {
     };
 
     pc.onnegotiationneeded = async () => {
+      if (link.polite) return; // só o impolite inicia
       try {
         link.makingOffer = true;
         await pc.setLocalDescription(await pc.createOffer());
@@ -273,39 +303,32 @@ export class VoiceChat {
       }
     };
 
-    // quem não é polite espera; quem é polite e tem id menor inicia
-    if (!polite) {
-      try {
-        link.makingOffer = true;
-        await pc.setLocalDescription(await pc.createOffer());
-        this.send({
-          kind: "voice-offer",
-          from: this.selfId,
-          to: peerId,
-          sdp: pc.localDescription!.toJSON(),
-        });
-      } catch (e) {
-        console.warn("[voice] initial offer", e);
-      } finally {
-        link.makingOffer = false;
-      }
-    }
-
+    // addTrack acima já agenda onnegotiationneeded no lado impolite,
+    // que é quem envia a oferta. Uma segunda oferta manual aqui criava
+    // glare com a automática.
     this.emit();
   }
 
   private async handleOffer(from: string, sdp: RTCSessionDescriptionInit) {
     let link = this.peers.get(from);
     if (!link) {
-      await this.ensurePeer(from, this.selfId < from);
+      await this.ensurePeer(from);
       link = this.peers.get(from);
     }
     if (!link) return;
     const pc = link.pc;
-    const offerCollision =
-      link.makingOffer || pc.signalingState !== "stable";
-    if (offerCollision && !link.polite) return;
+
+    // Perfect negotiation: numa colisão, o impolite ignora a oferta e o
+    // polite desfaz a sua (rollback) antes de aceitar a do outro. Sem o
+    // rollback, setRemoteDescription rebenta em "have-local-offer".
+    const collision = link.makingOffer || pc.signalingState !== "stable";
+    link.ignoreOffer = collision && !link.polite;
+    if (link.ignoreOffer) return;
+
     try {
+      if (collision) {
+        await pc.setLocalDescription({ type: "rollback" });
+      }
       await pc.setRemoteDescription(sdp);
       await pc.setLocalDescription(await pc.createAnswer());
       this.send({
@@ -335,15 +358,19 @@ export class VoiceChat {
     try {
       await link.pc.addIceCandidate(candidate);
     } catch (e) {
-      console.warn("[voice] ice", e);
+      // Candidatos de uma oferta que ignorámos chegam sempre e falham: é esperado.
+      if (!link.ignoreOffer) console.warn("[voice] ice", e);
     }
   }
 
   private async removePeer(peerId: string) {
     const link = this.peers.get(peerId);
     if (!link) return;
-    link.audio?.pause();
-    link.audio = undefined;
+    if (link.audio) {
+      link.audio.pause();
+      link.audio.srcObject = null;
+      link.audio = undefined;
+    }
     link.pc.close();
     this.peers.delete(peerId);
     this.emit();
