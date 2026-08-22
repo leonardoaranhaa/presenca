@@ -44,7 +44,7 @@ type State = {
   getQuality: () => ReturnType<typeof qualityProfile>;
   connectPlace: () => void;
   disconnectPlace: () => void;
-  publishPose: () => void;
+  publishPose: (pose?: WorldPose) => void;
   setPeers: (peers: PeerPose[]) => void;
   exportLocalData: () => Record<string, unknown>;
   wipeLocalData: () => void;
@@ -222,9 +222,17 @@ export const usePresence = create<State>()(
         transport = null;
         set({ peers: [] });
       },
-      publishPose: () => {
+      /**
+       * Publica a pose no transporte.
+       *
+       * Aceita a pose ao vivo por argumento: o mundo 3D publica ~8x/s e
+       * escrever isso no store fazia todos os subscritores re-renderizar
+       * a esse ritmo. O store guarda só a pose amortecida (persistência).
+       */
+      publishPose: (live) => {
         const s = get();
         if (!transport) return;
+        const pose = live ?? s.pose;
         const player = s.personas.find((p) => p.isPlayer);
         transport.send({
           type: "pose",
@@ -232,9 +240,9 @@ export const usePresence = create<State>()(
             peerId: s.peerId,
             displayName: player?.name ?? "Visitante",
             placeId: s.activePlaceId,
-            x: s.pose.x,
-            z: s.pose.z,
-            yaw: s.pose.yaw,
+            x: pose.x,
+            z: pose.z,
+            yaw: pose.yaw,
             personaId: player?.id,
             bodyGlbUrl: player?.bodyScan?.glbUrl?.startsWith("http")
               ? player.bodyScan.glbUrl

@@ -163,15 +163,14 @@ export function Figure({
     // Háptica facial → brilho local no rosto
     const faceGestures = ["cheek_kiss", "forehead_touch", "cheek_caress", "temple_press", "nose_boop", "farewell_cheek"];
     if (gType && faceGestures.includes(gType) && gAmt > 0) {
-      const side = gesturePose?.current?.hugStyle; // reuse field? better store facialSide
-      void side;
+      const side = gesturePose?.current?.facialSide ?? "right";
       const glow = 0.35 + 0.65 * gAmt;
       if (leftCheek.current) {
         const m = leftCheek.current.material as THREE.MeshBasicMaterial;
         const on =
           gType === "forehead_touch" || gType === "nose_boop"
             ? 0.15 * gAmt
-            : (gesturePose?.current as { facialSide?: string })?.facialSide !== "right"
+            : side !== "right"
               ? glow
               : 0.05 * gAmt;
         m.opacity = on;
@@ -182,7 +181,7 @@ export function Figure({
         const on =
           gType === "forehead_touch" || gType === "nose_boop"
             ? 0.15 * gAmt
-            : (gesturePose?.current as { facialSide?: string })?.facialSide !== "left"
+            : side !== "left"
               ? glow
               : 0.05 * gAmt;
         m.opacity = on;
@@ -524,8 +523,11 @@ export function FamilyFigures({
         const spawn = ROOM_SPAWNS[p.room];
         const x = spawn.x + (i % 2 === 0 ? 0.15 : -0.2);
         const z = spawn.z;
-        const approach =
-          p.kind === "memorial" || talkingId === p.id || p.kind === "living";
+        // A condição anterior — memorial || falando || vivo — era sempre
+        // verdadeira, por isso toda a gente convergia para o jogador em
+        // permanência. Aproximam-se quem está em conversa, e as memoriais,
+        // que é o gesto que a experiência quer.
+        const approach = talkingId === p.id || p.kind === "memorial";
         return (
           <WalkingNpc
             key={p.id}

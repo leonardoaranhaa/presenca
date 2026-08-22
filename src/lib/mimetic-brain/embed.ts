@@ -333,8 +333,12 @@ export function topKHybrid(
   const qTokens = tokenize(query);
   const qVec = embedText(query);
 
+  // Índice por id: `items.find` dentro do map era O(n²) e esta função corre
+  // a cada mensagem, sobre todos os traços da persona.
+  const byId = new Map(items.map((i) => [i.id, i]));
+
   const scored = index.docs.map((doc) => {
-    const item = items.find((i) => i.id === doc.id);
+    const item = byId.get(doc.id);
     const bm = bm25FScore(qTokens, doc, index);
     const cos = item
       ? cosine(qVec, item.vector) * (0.5 + 0.5 * Math.min(1, item.weight))

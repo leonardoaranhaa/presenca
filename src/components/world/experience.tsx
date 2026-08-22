@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import { PLAYER_ID } from "@/lib/seed";
+import { npcAgents } from "./navmesh";
 import { usePresence } from "@/lib/store";
 import { ROOM_SPAWNS } from "@/lib/types";
 import { FamilyFigures, PeerFigures } from "./figures";
@@ -18,13 +19,11 @@ import { NavClickTarget } from "./nav-click";
 import { PlayerPathRibbon } from "./path-line";
 import { SensationBridge } from "./sensation-bridge";
 
-/** Nearest persona — ref, sem setState a cada passo (Fase 2). */
-const nearestRef = { id: null as string | null, dist: 99 };
-
 export function WorldExperience() {
+  /** Persona mais próxima — ref, para não fazer setState a cada frame. */
+  const nearestRef = useRef({ id: null as string | null, dist: 99 });
   const personas = usePresence((s) => s.personas);
   const peers = usePresence((s) => s.peers);
-  const pose = usePresence((s) => s.pose);
   const setPose = usePresence((s) => s.setPose);
   const activeChatId = usePresence((s) => s.activeChatId);
   const setActive = usePresence((s) => s.setActiveChat);
@@ -40,8 +39,16 @@ export function WorldExperience() {
   /** HUD poll — atualiza no máximo ~10 Hz, não no frame. */
   const [nearHud, setNearHud] = useState({ id: null as string | null, dist: 99 });
 
-  const pos = useRef(new THREE.Vector3(pose.x, 0, pose.z));
-  const yawRef = useRef(pose.yaw);
+  // Leitura única: a pose guardada só semeia a posição inicial. Subscrevê-la
+  // faria o Canvas inteiro re-renderizar a cada gravação.
+  const pos = useRef(
+    new THREE.Vector3(
+      usePresence.getState().pose.x,
+      0,
+      usePresence.getState().pose.z,
+    ),
+  );
+  const yawRef = useRef(usePresence.getState().pose.yaw);
   const lastSave = useRef(0);
   const lastPublish = useRef(0);
   const personasRef = useRef(personas);
@@ -85,10 +92,10 @@ export function WorldExperience() {
   useEffect(() => {
     const id = window.setInterval(() => {
       if (
-        nearestRef.id !== nearHud.id ||
-        Math.abs(nearestRef.dist - nearHud.dist) > 0.15
+        nearestRef.current.id !== nearHud.id ||
+        Math.abs(nearestRef.current.dist - nearHud.dist) > 0.15
       ) {
-        setNearHud({ id: nearestRef.id, dist: nearestRef.dist });
+        setNearHud({ id: nearestRef.current.id, dist: nearestRef.current.dist });
       }
     }, 100);
     return () => clearInterval(id);
@@ -185,31 +192,38 @@ export function WorldExperience() {
           onPos={(x, z, yaw, speed) => {
             playerSpeedRef.current = speed;
             yawRef.current = yaw;
-            // nearest sem React state
+            // Persona mais próxima, sem passar por React state.
+            // Usa a posição ao vivo do agente: as personas andam pelo lar via
+            // A*, por isso medir contra o spawn dava a distância errada assim
+            // que alguém saía do sítio — a UI de conversa e os gestos de
+            // sensação disparavam (ou não) no momento errado.
             let bestId: string | null = null;
             let bestDist = 99;
             for (const p of personasRef.current) {
               if (p.isPlayer) continue;
-              const s = ROOM_SPAWNS[p.room];
-              const d = Math.hypot(x - s.x, z - s.z);
+              const agent = npcAgents.get(p.id);
+              const spawn = ROOM_SPAWNS[p.room];
+              const px = agent?.x ?? spawn.x;
+              const pz = agent?.z ?? spawn.z;
+              const d = Math.hypot(x - px, z - pz);
               if (d < bestDist) {
                 bestDist = d;
                 bestId = p.id;
               }
             }
-            nearestRef.id = bestId;
-            nearestRef.dist = bestDist;
+            nearestRef.current = { id: bestId, dist: bestDist };
 
             const now = performance.now();
+            // Persistência: amortecida, para o localStorage não ser escrito por frame.
             if (now - lastSave.current > 800) {
               lastSave.current = now;
               setPose({ x, z, yaw });
             }
+            // Rede: frequente, mas passada por argumento — escrever no store a
+            // este ritmo re-renderizava toda a cena.
             if (now - lastPublish.current > 120) {
               lastPublish.current = now;
-              // pose já está no store; publish lê do store — atualizar antes
-              usePresence.setState({ pose: { x, z, yaw } });
-              publishPose();
+              publishPose({ x, z, yaw });
             }
           }}
         />

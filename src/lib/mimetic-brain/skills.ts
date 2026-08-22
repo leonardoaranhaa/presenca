@@ -1,7 +1,7 @@
 import { uid } from "@/lib/utils";
 import { embedText, topKHybrid } from "./embed";
 import { bumpTraits, pushTrace, unique } from "./model";
-import type { MimeticModel, SkillContext, SkillResult } from "./types";
+import type { SkillContext, SkillResult } from "./types";
 
 export function skillIngestMemory(ctx: SkillContext): SkillResult {
   const m = ctx.memory;
@@ -21,11 +21,9 @@ export function skillIngestMemory(ctx: SkillContext): SkillResult {
     createdAt: Date.now(),
     sourceMemoryId: m.id,
   });
-  model = bumpTraits(model, text, ctx.persona.traits);
-  model = {
-    ...model,
-    evolvingSummary: evolveSummary(model, text, ctx.persona.name),
-  };
+  model = bumpTraits(model, text, ctx.persona.traits, true);
+  // O resumo é recalculado por skillEvolve, que corre logo a seguir em
+  // MimeticBrain.absorbMemory. Não há resumo incremental a acumular aqui.
   return { model, notes: ["memória absorvida"] };
 }
 
@@ -57,7 +55,7 @@ export function skillIngestChat(ctx: SkillContext): SkillResult {
       speechPatterns: unique([...model.speechPatterns, c.text.slice(0, 120)]),
     };
   }
-  model = bumpTraits(model, c.text, ctx.persona.traits);
+  model = bumpTraits(model, c.text, ctx.persona.traits, c.role === "presence");
   return { model, notes: ["chat absorvido"] };
 }
 
@@ -86,19 +84,48 @@ export function skillRetrieve(ctx: SkillContext): SkillResult {
   };
 }
 
+/**
+ * Recalcula o resumo evolutivo e os maneirismos a partir do estado actual.
+ *
+ * Antes: `evolvingSummary` era `model.evolvingSummary || <texto base>`, ou
+ * seja, depois da primeira memória nunca mais mudava — apesar de a função se
+ * chamar "evolve". E os maneirismos recebiam `"eco de <traço>"`, texto de
+ * enchimento que ia parar ao systemPrompt sem dizer nada ao modelo.
+ *
+ * Agora é derivado, não acumulado: recalcular sobre os mesmos traços dá
+ * sempre o mesmo resultado, e o tamanho é limitado por construção.
+ */
 export function skillEvolve(ctx: SkillContext): SkillResult {
   const model = ctx.model;
   const topTraits = Object.entries(model.traitWeights)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
+    .slice(0, 6)
     .map(([k]) => k);
+
+  const memoryTraces = model.traces
+    .filter((t) => t.kind === "memory")
+    .sort((a, b) => b.weight - a.weight || b.createdAt - a.createdAt)
+    .slice(0, 4)
+    .map((t) => (t.fields?.title || t.text).trim().slice(0, 80))
+    .filter(Boolean);
+
+  const base =
+    ctx.persona.soul?.summary?.trim() ||
+    `Presença mímica de ${ctx.persona.name}.`;
+
+  const parts = [base];
+  if (topTraits.length) parts.push(`Traços dominantes: ${topTraits.join(", ")}.`);
+  if (memoryTraces.length) parts.push(`Memórias centrais: ${memoryTraces.join("; ")}.`);
+  parts.push(`${model.traces.length} traços absorvidos.`);
+
   return {
     model: {
       ...model,
-      evolvingSummary:
-        model.evolvingSummary ||
-        `Presença mímica de ${ctx.persona.name} com ${model.traces.length} traços de memória.`,
-      mannerisms: unique([...model.mannerisms, ...topTraits.map((t) => `eco de ${t}`)]).slice(0, 12),
+      evolvingSummary: parts.join(" ").slice(0, 600),
+      mannerisms: unique([
+        ...model.mannerisms,
+        ...(ctx.persona.soul?.mannerisms ?? []),
+      ]).slice(0, 12),
       updatedAt: Date.now(),
     },
     notes: ["modelo evoluiu"],
@@ -129,12 +156,4 @@ export function skillComposePrompt(ctx: SkillContext, retrieved: string): SkillR
     .filter(Boolean)
     .join("\n");
   return { model: m, output: block };
-}
-
-function evolveSummary(model: MimeticModel, newText: string, name: string): string {
-  const prev = model.evolvingSummary || `Presença mímica de ${name}.`;
-  const snippet = newText.slice(0, 160).replace(/\s+/g, " ");
-  if (prev.includes(snippet.slice(0, 40))) return prev;
-  const merged = `${prev} · + ${snippet}`;
-  return merged.length > 600 ? merged.slice(merged.length - 600) : merged;
 }
