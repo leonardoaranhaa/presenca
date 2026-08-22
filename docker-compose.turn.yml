@@ -1,0 +1,31 @@
+# coturn para desenvolvimento local do Presença
+# Uso: EXTERNAL_IP=x.x.x.x TURN_SECRET=segredo docker compose -f docker-compose.turn.yml up -d
+#
+# No .env da app:
+#   TURN_URLS=turn:EXTERNAL_IP:3478
+#   TURN_SECRET=segredo
+#   TURN_TTL_SECONDS=3600
+#
+# coturn deve usar o mesmo secret:
+#   --use-auth-secret --static-auth-secret=segredo
+
+services:
+  coturn:
+    image: instrumentisto/coturn:latest
+    network_mode: host
+    restart: unless-stopped
+    command:
+      - -n
+      - --log-file=stdout
+      - --listening-port=3478
+      - --fingerprint
+      - --lt-cred-mech
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET:-presenca_dev_secret}
+      - --realm=presenca.local
+      - --external-ip=${EXTERNAL_IP:-}
+      - --no-cli
+      - --no-tls
+      - --no-dtls
+      - --min-port=49152
+      - --max-port=49200

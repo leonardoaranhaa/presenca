@@ -1,0 +1,5 @@
+{
+  "name": "presenca",
+  "main": "party/presenca.ts",
+  "compatibilityDate": "2024-04-01"
+}
