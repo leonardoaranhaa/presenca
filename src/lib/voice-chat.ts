@@ -56,7 +56,9 @@ export class VoiceChat {
   onChange(fn: Listener) {
     this.listeners.add(fn);
     fn(this.snapshot());
-    return () => this.listeners.delete(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
   }
 
   private emit() {

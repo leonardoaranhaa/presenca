@@ -116,7 +116,9 @@ function createHandlerSet() {
     },
     onMessage(fn: Handler) {
       handlers.add(fn);
-      return () => handlers.delete(fn);
+      return () => {
+        handlers.delete(fn);
+      };
     },
   };
 }

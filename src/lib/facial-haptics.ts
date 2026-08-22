@@ -43,8 +43,11 @@ export type FacialPrefs = {
   /** Consentimento explícito para háptica no rosto */
   facialConsent: boolean;
   intensityScale: number;
-  /** Preferência de lado (cultura / hábito) */
-  preferredCheek: "left" | "right" | "auto";
+  /**
+   * Preferência de lado (cultura / hábito).
+   * "both" cobre o beijo de dois lados comum em PT/BR.
+   */
+  preferredCheek: "left" | "right" | "both" | "auto";
 };
 
 export const DEFAULT_FACIAL_PREFS: FacialPrefs = {
@@ -121,14 +124,14 @@ export function resolveFacialPattern(
   const frameMs = 40;
 
   // Lado
-  if (facialPrefs.preferredCheek === "left") side = "left";
-  else if (facialPrefs.preferredCheek === "right") side = "right";
-  else {
-    // auto: hash do nome → lado estável por persona
+  if (facialPrefs.preferredCheek === "auto") {
+    // hash do nome → lado estável por persona (não muda entre sessões)
     const seed = (ctx.personaId || ctx.personaName || "x")
       .split("")
       .reduce((a, c) => a + c.charCodeAt(0), 0);
     side = seed % 2 === 0 ? "left" : "right";
+  } else {
+    side = facialPrefs.preferredCheek;
   }
 
   const rel = ctx.relationship || "";

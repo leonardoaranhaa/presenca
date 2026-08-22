@@ -165,7 +165,7 @@ export const usePresence = create<State>()(
       pushMessage: (msg) => {
         const messages = { ...get().messages };
         const list = messages[msg.personaId] ?? [];
-        messages[msg.personaId] = [...list, msg].slice(-80);
+        messages[msg.personaId] = [...list, msg].slice(-MAX_MESSAGES);
         let personas = get().personas;
         const target = personas.find((p) => p.id === msg.personaId);
         if (target && target.kind === "memorial") {

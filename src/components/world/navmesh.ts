@@ -307,7 +307,9 @@ const pathListeners = new Set<PathListener>();
 
 export function onPlayerPathChange(fn: PathListener) {
   pathListeners.add(fn);
-  return () => pathListeners.delete(fn);
+  return () => {
+    pathListeners.delete(fn);
+  };
 }
 
 function notifyPathListeners() {
