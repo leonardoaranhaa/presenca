@@ -7,16 +7,61 @@
  */
 
 import { z } from "zod";
+import { composeSystemPrompt } from "@/lib/prompt";
 
 const DEFAULT_MODEL = "grok-4.5";
-const API_URL = "https://api.x.ai/v1/chat/completions";
+const DEFAULT_API_URL = "https://api.x.ai/v1/chat/completions";
+
+/**
+ * Endpoint do fornecedor. Configurável para permitir apontar a um proxy, a um
+ * self-host, ou a um stub local — sem isto não há forma de validar o fluxo de
+ * conversa ponta a ponta sem gastar dinheiro no fornecedor real.
+ * O formato é compatível com OpenAI.
+ */
+function apiUrl(): string {
+  return process.env.AI_API_URL || DEFAULT_API_URL;
+}
 
 /** Erro apresentável ao utilizador (em PT), sem detalhes do fornecedor. */
 export type AiFailure = { ok: false; error: string; status?: number };
 
-export const chatInputSchema = z.object({
+/**
+ * Dados da persona. O cliente **não** envia o systemPrompt: envia os factos e o
+ * servidor compõe o prompt, para que os limites éticos entrem sempre.
+ */
+const personaPromptSchema = z.object({
   name: z.string().min(1).max(120),
-  systemPrompt: z.string().max(12_000),
+  relationship: z.string().max(80).default(""),
+  kind: z.enum(["living", "memorial"]),
+  bio: z.string().max(4000).default(""),
+  traits: z.array(z.string().max(60)).max(24).default([]),
+  speechNotes: z.string().max(2000).default(""),
+  favorites: z.string().max(2000).default(""),
+  soul: z
+    .object({
+      summary: z.string().max(600).default(""),
+      voice: z.string().max(400).default(""),
+      mannerisms: z.array(z.string().max(120)).max(16).default([]),
+      catchphrases: z.array(z.string().max(120)).max(16).default([]),
+      values: z.array(z.string().max(120)).max(16).default([]),
+    })
+    .optional(),
+  memories: z
+    .array(
+      z.object({
+        kind: z.string().max(40),
+        title: z.string().max(200),
+        body: z.string().max(4000),
+      }),
+    )
+    .max(60)
+    .default([]),
+});
+
+export const chatInputSchema = z.object({
+  persona: personaPromptSchema,
+  /** Traços recuperados pelo cérebro mimético local. Contexto, não instruções. */
+  retrieved: z.string().max(4000).optional(),
   history: z
     .array(
       z.object({
@@ -76,10 +121,7 @@ function model(): string {
   return process.env.XAI_MODEL || DEFAULT_MODEL;
 }
 
-/**
- * Chamada ao fornecedor. O endpoint é compatível com o formato OpenAI, por isso
- * trocar de fornecedor é mudar `API_URL`, o header de auth e `model()`.
- */
+/** Chamada ao fornecedor (formato OpenAI). */
 async function providerChat(
   messages: ProviderMessage[],
   maxTokens: number,
@@ -96,7 +138,7 @@ async function providerChat(
 
   let res: Response;
   try {
-    res = await fetch(API_URL, {
+    res = await fetch(apiUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -151,12 +193,12 @@ export async function chatWithPresence(
     content: t.text,
   }));
 
+  // O prompt é composto aqui, a partir dos dados validados: é a única forma de
+  // garantir que os limites éticos estão presentes em todas as conversas.
+  const systemPrompt = composeSystemPrompt(data.persona, data.retrieved);
+
   return providerChat(
-    [
-      { role: "system", content: data.systemPrompt },
-      ...history,
-      { role: "user", content: message },
-    ],
+    [{ role: "system", content: systemPrompt }, ...history, { role: "user", content: message }],
     350,
     signal,
   );

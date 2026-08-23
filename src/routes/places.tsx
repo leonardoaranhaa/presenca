@@ -14,6 +14,7 @@ import { uid } from "@/lib/utils";
 import { SensationPanel } from "@/components/sensation/sensation-panel";
 import { MyBodyPanel } from "@/components/persona/my-body-panel";
 import { ConnectionPanel } from "@/components/realtime/connection-panel";
+import { ServiceStatusPanel } from "@/components/feedback/service-status-panel";
 import { PrivacyPanel } from "@/components/legal/privacy-panel";
 
 export const Route = createFileRoute("/places")({ component: PlacesPage });
@@ -47,8 +48,8 @@ function PlacesPage() {
             onClick={() => setQualityTier(t)}
             className={
               qualityTier === t
-                ? "h-9 rounded-full bg-primary px-3 text-xs text-primary-foreground"
-                : "h-9 rounded-full bg-surface-2 px-3 text-xs text-muted"
+                ? "h-11 rounded-full bg-primary px-4 text-xs text-primary-foreground"
+                : "h-11 rounded-full bg-surface-2 px-4 text-xs text-muted"
             }
           >
             {t}
@@ -130,6 +131,8 @@ function PlacesPage() {
       </div>
 
       <div className="mt-6">
+        <ServiceStatusPanel />
+
         <PrivacyPanel />
       </div>
       <div className="mt-6">

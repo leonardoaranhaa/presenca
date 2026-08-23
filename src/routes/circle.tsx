@@ -66,7 +66,7 @@ function CirclePage() {
       <button
         type="button"
         onClick={() => resetDemo()}
-        className="mt-10 text-xs text-faint hover:text-muted"
+        className="mt-10 inline-flex min-h-11 items-center text-xs text-faint hover:text-muted"
       >
         Restaurar o círculo de demonstração
       </button>

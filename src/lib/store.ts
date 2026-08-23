@@ -3,6 +3,8 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import type { ChatMessage, Persona, WorldPose } from "./types";
 import { buildSystemPrompt, PLAYER_ID, SAMPLE_FAMILY } from "./seed";
 import { MimeticBrain, applyBrainToPersona, embedText } from "./mimetic-brain";
+import { clearMedia, deleteMedia, deleteMediaFor } from "./media-store";
+import { migrateMediaToIndexedDb } from "./media-migration";
 import { SAMPLE_PLACES, type Place } from "./places";
 import type { QualityTier } from "./quality";
 import { qualityProfile } from "./quality";
@@ -51,6 +53,9 @@ type State = {
 };
 
 const STORAGE_KEY = "presenca-v2";
+
+/** Versão da forma do estado persistido. Subir sempre que a forma mudar. */
+const STATE_VERSION = 1;
 
 /**
  * Os vectores dos traços não são persistidos.
@@ -185,6 +190,8 @@ export const usePresence = create<State>()(
       },
       removePersona: (id) => {
         if (id === PLAYER_ID) return;
+        // Os bytes vivem noutro sítio: sem isto ficavam órfãos no IndexedDB.
+        void deleteMediaFor(id);
         const messages = { ...get().messages };
         delete messages[id];
         set({
@@ -204,6 +211,13 @@ export const usePresence = create<State>()(
         set({ personas: withPrompts(personas) });
       },
       removeMemory: (personaId, memoryId) => {
+        // Os bytes vivem no IndexedDB: sem isto ficavam órfãos, a ocupar espaço
+        // de uma memória que a família já apagou.
+        const alvo = get()
+          .personas.find((p) => p.id === personaId)
+          ?.memories.find((m) => m.id === memoryId);
+        if (alvo?.mediaId) void deleteMedia(alvo.mediaId);
+
         const personas = get().personas.map((p) =>
           p.id === personaId ? { ...p, memories: p.memories.filter((m) => m.id !== memoryId) } : p,
         );
@@ -349,6 +363,8 @@ export const usePresence = create<State>()(
           onboarded: false,
           peers: [],
         });
+        // Direito à eliminação: tem de levar os bytes também.
+        void clearMedia();
         try {
           localStorage.removeItem(STORAGE_KEY);
         } catch {
@@ -358,7 +374,27 @@ export const usePresence = create<State>()(
     }),
     {
       name: STORAGE_KEY,
+      version: STATE_VERSION,
       storage: createJSONStorage(() => quotaAwareStorage),
+      /**
+       * Migração do estado guardado.
+       *
+       * Sem isto, qualquer mudança na forma dos dados corrompia em silêncio o
+       * lar de quem já usava a app — ou rebentava na rehidratação. As migrações
+       * são cumulativas e cada uma só sobe uma versão.
+       */
+      migrate: (persistido, versao) => {
+        let estado = persistido as Partial<State>;
+
+        // v0 → v1: os traços do cérebro mimético deixaram de guardar o vetor
+        // (é função pura do texto e valia 82% do peso). restoreVectors
+        // recalcula-o; aqui só é preciso não rejeitar o formato antigo.
+        if (versao < 1) {
+          estado = { ...estado };
+        }
+
+        return estado as State;
+      },
       partialize: (s) => ({
         onboarded: s.onboarded,
         personas: s.personas.map(stripVectors),
@@ -373,6 +409,16 @@ export const usePresence = create<State>()(
         if (!state) return;
         state.personas = state.personas.map(restoreVectors);
         state.markHydrated();
+
+        // Move para IndexedDB as media que ficaram em base64 no estado.
+        // Assíncrono e tolerante a falha: se não correr, os dados ficam onde
+        // estavam e tenta-se na sessão seguinte.
+        void migrateMediaToIndexedDb(state.personas).then(({ personas, migradas }) => {
+          if (migradas > 0) {
+            usePresence.setState({ personas });
+            console.info(`[presenca] ${migradas} media movidas para IndexedDB`);
+          }
+        });
       },
     },
   ),

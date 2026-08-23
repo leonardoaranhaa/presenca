@@ -7,9 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { awakenPresence } from "@/lib/ai-client";
+import { loadPrivacyPrefs } from "@/lib/lgpd";
+import { isStorageFull } from "@/lib/store";
 import { usePresence } from "@/lib/store";
 import type { Memory, MemoryKind, Persona } from "@/lib/types";
-import { compressImage, fileToDataUrl, uid } from "@/lib/utils";
+import { useMediaUrl } from "@/lib/use-media-url";
+import { blobToDataUrl, dataUrlToBlob, getMediaBlob, putMedia } from "@/lib/media-store";
+import { compressImage, uid } from "@/lib/utils";
 import { requestVoiceClone } from "@/lib/voice";
 
 const KINDS: { id: MemoryKind; label: string; icon: typeof Type }[] = [
@@ -29,38 +33,62 @@ export function MemoryVault({ persona }: { persona: Persona }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cloning, setCloning] = useState(false);
+  const [semEspaco, setSemEspaco] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /** Limite por ficheiro. O IndexedDB aguenta mais, mas um vídeo enorme no
+   *  telemóvel de outra pessoa da família não vale a pena. */
+  const MAX_BYTES = 25 * 1024 * 1024;
 
   async function onFile(file: File | undefined) {
     if (!file) return;
     try {
+      let blob: Blob;
       if (kind === "photo" && file.type.startsWith("image/")) {
-        const url = await compressImage(file);
-        addMemory(persona.id, {
-          id: uid("mem"),
-          kind: "photo",
-          title: title.trim() || file.name,
-          body: body.trim() || "Foto guardada no cofre.",
-          mediaDataUrl: url,
-          createdAt: Date.now(),
-        });
-      } else if ((kind === "voice" || kind === "video") && file.size < 4_500_000) {
-        const url = await fileToDataUrl(file);
-        addMemory(persona.id, {
-          id: uid("mem"),
-          kind,
-          title: title.trim() || file.name,
-          body: body.trim() || (kind === "voice" ? "Nota de voz." : "Vídeo de memória."),
-          mediaDataUrl: url,
-          createdAt: Date.now(),
-        });
+        // A compressão continua a valer: reduz o que fica guardado e o que
+        // sobe para o despertar da presença.
+        const dataUrl = await compressImage(file);
+        const b = dataUrlToBlob(dataUrl);
+        if (!b) throw new Error("imagem");
+        blob = b;
+      } else if (kind === "voice" || kind === "video") {
+        if (file.size > MAX_BYTES) {
+          toast.error("Ficheiro grande demais (máx. 25 MB).");
+          return;
+        }
+        blob = file;
       } else {
-        toast.error("Arquivo grande demais para guardar neste aparelho (máx. ~4 MB).");
+        toast.error("Este tipo de ficheiro não corresponde ao tipo de memória escolhido.");
         return;
       }
+
+      // Os bytes vão para o IndexedDB; no estado fica só a chave.
+      const mediaId = await putMedia(blob, { personaId: persona.id });
+      addMemory(persona.id, {
+        id: uid("mem"),
+        kind,
+        title: title.trim() || file.name,
+        body:
+          body.trim() ||
+          (kind === "photo"
+            ? "Foto guardada no cofre."
+            : kind === "voice"
+              ? "Nota de voz."
+              : "Vídeo de memória."),
+        mediaId,
+        createdAt: Date.now(),
+      });
+
       setTitle("");
       setBody("");
-      toast.success("Memória guardada.");
+      if (isStorageFull()) {
+        setSemEspaco(true);
+        toast.error("Sem espaço neste aparelho — a memória pode não ter ficado guardada.");
+      } else {
+        setSemEspaco(false);
+        toast.success("Memória guardada.");
+      }
     } catch {
       toast.error("Não foi possível ler o arquivo.");
     }
@@ -81,16 +109,20 @@ export function MemoryVault({ persona }: { persona: Persona }) {
     addMemory(persona.id, mem);
     setTitle("");
     setBody("");
-    toast.success("Memória guardada.");
+    if (isStorageFull()) {
+      setSemEspaco(true);
+      toast.error("Sem espaço neste aparelho — a memória pode não ter ficado guardada.");
+    } else {
+      setSemEspaco(false);
+      toast.success("Memória guardada.");
+    }
   }
 
   async function awaken() {
     setBusy(true);
     try {
-      const photos = persona.memories
-        .filter((m) => m.kind === "photo" && m.mediaDataUrl)
-        .map((m) => m.mediaDataUrl!)
-        .slice(0, 3);
+      // As fotos vivem no IndexedDB; o fornecedor recebe-as em data URL.
+      const photos = await memoriasComoDataUrl(persona.memories, "photo", 3);
       const res = await awakenPresence({
         name: persona.name,
         relationship: persona.relationship,
@@ -140,8 +172,8 @@ export function MemoryVault({ persona }: { persona: Persona }) {
                 onClick={() => setKind(k.id)}
                 className={
                   kind === k.id
-                    ? "inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-3 text-xs text-primary-foreground"
-                    : "inline-flex h-10 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-xs text-muted"
+                    ? "inline-flex h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-xs text-primary-foreground"
+                    : "inline-flex h-11 items-center gap-1.5 rounded-full bg-surface-2 px-4 text-xs text-muted"
                 }
               >
                 <Icon className="size-3.5" />
@@ -178,6 +210,19 @@ export function MemoryVault({ persona }: { persona: Persona }) {
         )}
       </Card>
 
+      {semEspaco && (
+        <div
+          className="rounded-md bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted shadow-[var(--shadow-border)]"
+          role="alert"
+        >
+          <strong className="font-medium text-foreground">
+            O armazenamento deste aparelho está cheio.
+          </strong>{" "}
+          As memórias novas podem não ficar guardadas. Exporte os dados em Lugares → Privacidade e
+          LGPD antes de continuar, ou liberte espaço no browser.
+        </div>
+      )}
+
       <div className="space-y-3">
         {persona.memories.length === 0 && (
           <p className="text-sm text-muted">
@@ -190,19 +235,7 @@ export function MemoryVault({ persona }: { persona: Persona }) {
               <p className="text-[11px] uppercase tracking-wider text-faint">{m.kind}</p>
               <p className="font-medium">{m.title}</p>
               <p className="mt-1 text-sm text-muted">{m.body}</p>
-              {m.kind === "photo" && m.mediaDataUrl && (
-                <img
-                  src={m.mediaDataUrl}
-                  alt={m.title}
-                  className="mt-2 max-h-40 rounded-md object-cover outline outline-1 -outline-offset-1 outline-foreground/10"
-                />
-              )}
-              {m.kind === "voice" && m.mediaDataUrl && (
-                <audio className="mt-2 w-full" controls src={m.mediaDataUrl} />
-              )}
-              {m.kind === "video" && m.mediaDataUrl && (
-                <video className="mt-2 max-h-48 w-full rounded-md" controls src={m.mediaDataUrl} />
-              )}
+              <MemoryMedia memory={m} />
             </div>
             <button
               type="button"
@@ -221,29 +254,60 @@ export function MemoryVault({ persona }: { persona: Persona }) {
           type="button"
           variant="outline"
           className="w-full sm:w-auto"
+          disabled={cloning}
           onClick={async () => {
-            const samples = persona.memories
-              .filter((m) => m.kind === "voice" && m.mediaDataUrl)
-              .map((m) => m.mediaDataUrl!);
-            const res = await requestVoiceClone({
-              personaId: persona.id,
-              name: persona.name,
-              sampleDataUrls: samples,
-              consent: true,
-            });
-            if (!res.ok) {
-              toast.error(res.error);
+            const samples = await memoriasComoDataUrl(persona.memories, "voice", 5);
+            if (!samples.length) {
+              toast.error("Guarde ao menos uma nota de voz no cofre antes de clonar.");
               return;
             }
-            setVoiceProfile(persona.id, {
-              provider: "elevenlabs",
-              elevenLabsVoiceId: res.voiceId,
-              consentAt: Date.now(),
-            });
-            toast.success("Voz indexada no perfil da presença (ElevenLabs).");
+
+            // O consentimento vem das preferências que a família ativou, não de
+            // um valor escrito no código. O servidor volta a exigi-lo.
+            const prefs = loadPrivacyPrefs();
+            const consent = {
+              allowVoiceClone: prefs.allowVoiceClone,
+              memorialFamilyAuthority: prefs.memorialFamilyAuthority,
+              policyVersion: prefs.acceptedPolicyVersion,
+              acceptedAt: prefs.acceptedPolicyAt ?? 0,
+            };
+
+            // Clonar cria uma voz num fornecedor externo a partir da voz de
+            // alguém que já partiu. Não deve acontecer por um clique distraído.
+            if (
+              !confirm(
+                `Vai criar uma voz sintética de ${persona.name} a partir de ${samples.length} ` +
+                  `nota(s) do cofre, num fornecedor externo (ElevenLabs). ` +
+                  `Só faça isto com a concordância da família. Continuar?`,
+              )
+            ) {
+              return;
+            }
+
+            setCloning(true);
+            try {
+              const res = await requestVoiceClone({
+                personaId: persona.id,
+                name: persona.name,
+                sampleDataUrls: samples,
+                consent,
+              });
+              if (!res.ok) {
+                toast.error(res.error);
+                return;
+              }
+              setVoiceProfile(persona.id, {
+                provider: "elevenlabs",
+                elevenLabsVoiceId: res.voiceId,
+                consentAt: Date.now(),
+              });
+              toast.success("Voz indexada no perfil da presença (ElevenLabs).");
+            } finally {
+              setCloning(false);
+            }
           }}
         >
-          Clonar voz (ElevenLabs)
+          {cloning ? "A clonar…" : "Clonar voz (ElevenLabs)"}
         </Button>
       )}
       {persona.voiceProfile?.provider === "elevenlabs" && (
@@ -272,4 +336,52 @@ export function MemoryVault({ persona }: { persona: Persona }) {
       )}
     </div>
   );
+}
+
+/**
+ * Lê media do cofre e devolve-a em data URL, que é o formato que as rotas de
+ * IA e de voz aceitam. Os bytes ficam no IndexedDB; isto é só a conversão para
+ * a chamada.
+ */
+async function memoriasComoDataUrl(
+  memories: Memory[],
+  kind: MemoryKind,
+  max: number,
+): Promise<string[]> {
+  const candidatas = memories.filter((m) => m.kind === kind).slice(0, max);
+  const urls = await Promise.all(
+    candidatas.map(async (m) => {
+      if (m.mediaId) {
+        const blob = await getMediaBlob(m.mediaId);
+        return blob ? blobToDataUrl(blob) : null;
+      }
+      // Dados anteriores à migração para IndexedDB.
+      return m.mediaDataUrl ?? null;
+    }),
+  );
+  return urls.filter((u): u is string => !!u);
+}
+
+/** Mostra a media de uma memória, do IndexedDB ou do formato antigo. */
+function MemoryMedia({ memory }: { memory: Memory }) {
+  const url = useMediaUrl(memory.mediaId, memory.mediaDataUrl);
+  if (!url) return null;
+
+  if (memory.kind === "photo") {
+    return (
+      <img
+        src={url}
+        alt={memory.title}
+        loading="lazy"
+        className="mt-2 max-h-40 rounded-md object-cover outline outline-1 -outline-offset-1 outline-foreground/10"
+      />
+    );
+  }
+  if (memory.kind === "voice") {
+    return <audio className="mt-2 w-full" controls preload="none" src={url} />;
+  }
+  if (memory.kind === "video") {
+    return <video className="mt-2 max-h-48 w-full rounded-md" controls preload="none" src={url} />;
+  }
+  return null;
 }

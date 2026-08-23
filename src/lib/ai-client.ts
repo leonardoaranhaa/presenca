@@ -6,6 +6,8 @@
  * tenha de olhar para códigos HTTP.
  */
 
+import type { PersonaPrompt } from "./prompt";
+
 export type ChatTurn = { role: "user" | "presence"; text: string };
 
 export type Soul = {
@@ -46,10 +48,18 @@ async function postJson<T>(url: string, body: unknown, signal?: AbortSignal): Pr
   return { ok: true, ...data };
 }
 
+/**
+ * O cliente envia os factos da persona, não o systemPrompt.
+ *
+ * O prompt é composto no servidor (`src/lib/prompt.ts`), para que os limites
+ * éticos estejam garantidos em todas as conversas em vez de dependerem de o
+ * browser os incluir.
+ */
 export function chatWithPresence(
   input: {
-    name: string;
-    systemPrompt: string;
+    persona: PersonaPrompt;
+    /** Traços recuperados localmente pelo cérebro mimético para esta fala. */
+    retrieved?: string;
     history: ChatTurn[];
     message: string;
   },

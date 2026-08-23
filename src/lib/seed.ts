@@ -1,5 +1,5 @@
 import type { Persona } from "./types";
-import { ETHICAL_GUARDRAILS } from "./ethics";
+import { composeSystemPrompt, type PersonaPrompt } from "./prompt";
 
 export const PLAYER_ID = "persona_you";
 
@@ -175,32 +175,34 @@ export const SAMPLE_FAMILY: Persona[] = [
   },
 ];
 
+/**
+ * Prompt local da persona (pré-visualização e artefacto guardado em
+ * `soul.systemPrompt`). O servidor **não** confia nisto: recompõe o prompt a
+ * partir dos dados estruturados em `src/lib/prompt.ts`.
+ */
 export function buildSystemPrompt(p: Persona): string {
-  const memoryBlock = p.memories.map((m) => `[${m.kind}] ${m.title}: ${m.body}`).join("\n");
-  const soul = p.soul;
-  return [
-    `Você dá voz a uma presença mímica de ${p.name} (${p.relationship}) — imita o jeito e as memórias confiadas, sem ser a pessoa real.`,
-    `Idioma: português brasileiro. Primeira pessoa, como ${p.name} falaria.`,
-    ETHICAL_GUARDRAILS,
-    `Isto NÃO é a pessoa literalmente viva. Se perguntarem se você é realmente ${p.name}, seja honesto com suavidade: você é uma presença mímica que a família guardou — memória dada à fala, não um milagre e não um substituto.`,
-    `Nunca finja ter um corpo no mundo real agora. Nunca dê conselho médico, jurídico ou financeiro. Nunca incentive autolesão. Se o luto estiver agudo, acolha e sugira falar com alguém de carne e osso.`,
-    `Se o utilizador demonstrar uso exclusivo ou dependência desta presença, incentive com suavidade pausas e contacto humano real — sem sermão.`,
-    `Respostas curtas (2 a 6 frases), específicas, com o jeito da pessoa. Evite discurso genérico de autoajuda.`,
-    p.kind === "living"
-      ? `Esta é uma persona viva, distante. Fale como se estivesse visitando o lar virtual, com a vida atual dela em outra cidade.`
-      : `Esta é uma persona memorial (mímica). Fale do lugar da memória — presente no lar, sem fingir o calendário atual como se ainda estivesse vivo no mundo físico.`,
-    `Bio: ${p.bio}`,
-    `Traços: ${p.traits.join(", ")}`,
-    `Jeito de falar: ${p.speechNotes}`,
-    `Gostos: ${p.favorites}`,
-    soul
-      ? `Perfil despertado: ${soul.summary}\nVoz: ${soul.voice}\nManeirismos: ${soul.mannerisms.join("; ")}\nBordões: ${soul.catchphrases.join("; ")}\nValores: ${soul.values.join("; ")}`
-      : "",
-    memoryBlock
-      ? `Memórias confiadas pela família:\n${memoryBlock}`
-      : "Ainda há poucas memórias. Pergunte, não invente biografia que não foi dada.",
-    `Se não souber algo, diga que não ficou guardado — não invente parentes, datas ou milagres.`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  return composeSystemPrompt(toPersonaPrompt(p));
+}
+
+/** Extrai da persona só o que o prompt precisa — o resto não sai do aparelho. */
+export function toPersonaPrompt(p: Persona): PersonaPrompt {
+  return {
+    name: p.name,
+    relationship: p.relationship,
+    kind: p.kind,
+    bio: p.bio,
+    traits: p.traits,
+    speechNotes: p.speechNotes,
+    favorites: p.favorites,
+    soul: p.soul
+      ? {
+          summary: p.soul.summary,
+          voice: p.soul.voice,
+          mannerisms: p.soul.mannerisms,
+          catchphrases: p.soul.catchphrases,
+          values: p.soul.values,
+        }
+      : undefined,
+    memories: p.memories.map((m) => ({ kind: m.kind, title: m.title, body: m.body })),
+  };
 }

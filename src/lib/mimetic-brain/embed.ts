@@ -20,13 +20,135 @@ export const BM25F_FIELD_WEIGHTS: Record<string, number> = {
 
 export type FieldName = keyof typeof BM25F_FIELD_WEIGHTS | string;
 
+/**
+ * Palavras vazias do português.
+ *
+ * O IDF do BM25 devia tratar disto sozinho — palavras comuns aparecem em
+ * muitos documentos e perdem peso. Mas isso pressupõe um corpus; aqui o
+ * "corpus" é o cofre de uma família, às vezes três memórias. Com tão pouco,
+ * "que" aparecer numa memória e não noutra dá-lhe IDF alto, e a pergunta
+ * "que conselhos ele dava?" recuperava a memória da goiabeira porque ambas
+ * continham "que".
+ *
+ * Inclui pronomes e verbos auxiliares que dominam as perguntas de família
+ * ("ele gostava de…", "o que ele fazia…") sem dizer nada sobre o conteúdo.
+ * Sem acentos: `tokenize` normaliza antes de comparar.
+ */
+const VAZIAS = new Set([
+  // artigos e preposições
+  "que",
+  "com",
+  "para",
+  "por",
+  "dos",
+  "das",
+  "nos",
+  "nas",
+  "pelo",
+  "pela",
+  "num",
+  "numa",
+  "uns",
+  "umas",
+  "aos",
+  "sem",
+  "sob",
+  "sobre",
+  "entre",
+  "ate",
+  // pronomes
+  "ele",
+  "ela",
+  "eles",
+  "elas",
+  "voce",
+  "voces",
+  "nos",
+  "meu",
+  "minha",
+  "seu",
+  "sua",
+  "dele",
+  "dela",
+  "deles",
+  "delas",
+  "isso",
+  "isto",
+  "aquilo",
+  "esse",
+  "essa",
+  "este",
+  "esta",
+  "aquele",
+  "aquela",
+  "quem",
+  "qual",
+  "quais",
+  // verbos auxiliares e de ligação
+  "era",
+  "eram",
+  "foi",
+  "foram",
+  "ser",
+  "estar",
+  "esta",
+  "estava",
+  "estavam",
+  "tem",
+  "tinha",
+  "tinham",
+  "ter",
+  "havia",
+  "sao",
+  "eras",
+  "seja",
+  "fosse",
+  // advérbios e conectores frequentes
+  "nao",
+  "sim",
+  "mais",
+  "menos",
+  "muito",
+  "muita",
+  "muitos",
+  "muitas",
+  "todo",
+  "toda",
+  "todos",
+  "todas",
+  "mas",
+  "como",
+  "quando",
+  "onde",
+  "porque",
+  "pois",
+  "entao",
+  "tambem",
+  "ainda",
+  "sempre",
+  "nunca",
+  "agora",
+  "depois",
+  "antes",
+  "aqui",
+  "ali",
+  "lah",
+  "assim",
+  "bem",
+  "mal",
+  "ja",
+  "so",
+  "outro",
+  "outra",
+]);
+
 export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .split(/[^\p{L}\p{N}]+/u)
-    .filter((t) => t.length > 2);
+    .filter((t) => t.length > 2 && !VAZIAS.has(t));
 }
 
 function hashToken(t: string): number {
@@ -340,10 +462,25 @@ export function topKHybrid(
     return { id: doc.id, text: doc.text, bm25: bm, cosine: cos };
   });
 
-  const maxBm = Math.max(...scored.map((s) => s.bm25), 1e-9);
-  const maxCos = Math.max(...scored.map((s) => s.cosine ?? 0), 1e-9);
+  // Sem qualquer correspondência lexical, o cosseno sozinho não é sinal.
+  //
+  // `embedText` é um hash de 64 dimensões: com um vocabulário real colide
+  // muito, e a semelhança que devolve entre textos sem palavras em comum é
+  // essencialmente ruído. Antes, uma pergunta como "que conselhos ele dava?"
+  // — que não partilha palavra nenhuma com as memórias — devolvia na mesma o
+  // primeiro resultado do cosseno, e o prompt entregava-o ao modelo rotulado
+  // como "contexto recuperado da memória". A presença falava da goiabeira a
+  // quem perguntou por conselhos.
+  //
+  // Devolver nada é melhor: o prompt tem um ramo para esse caso, que manda
+  // usar só o perfil e as memórias já presentes, sem fingir uma recuperação.
+  const comLexical = scored.filter((s) => s.bm25 > 0);
+  if (!comLexical.length) return [];
 
-  return scored
+  const maxBm = Math.max(...comLexical.map((s) => s.bm25), 1e-9);
+  const maxCos = Math.max(...comLexical.map((s) => s.cosine ?? 0), 1e-9);
+
+  return comLexical
     .map((s) => {
       const bmN = s.bm25 / maxBm;
       const cosN = (s.cosine ?? 0) / maxCos;

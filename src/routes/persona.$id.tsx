@@ -71,7 +71,7 @@ function PersonaPage() {
           {!persona.isPlayer && (
             <button
               type="button"
-              className="text-xs text-faint hover:text-muted"
+              className="inline-flex min-h-11 items-center text-xs text-faint hover:text-muted"
               onClick={() => remove(persona.id)}
             >
               Retirar do lar
