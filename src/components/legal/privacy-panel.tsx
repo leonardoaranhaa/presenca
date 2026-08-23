@@ -74,12 +74,12 @@ export function PrivacyPanel() {
         ).map(([key, label]) => (
           <label
             key={String(key)}
-            className="flex cursor-pointer items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm"
+            className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm"
           >
             <span>{label}</span>
             <input
               type="checkbox"
-              className="size-4 accent-[var(--accent)]"
+              className="size-5 shrink-0 accent-[var(--accent)]"
               checked={Boolean(prefs[key])}
               onChange={(e) => toggle(key, e.target.checked)}
             />

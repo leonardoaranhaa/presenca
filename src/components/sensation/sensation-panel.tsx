@@ -64,13 +64,13 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
         </div>
       </div>
 
-      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2.5">
+      <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2.5">
         <span className="text-sm">Ativar sensação neste aparelho</span>
         <input
           type="checkbox"
           checked={prefs.enabled}
           onChange={(e) => save({ enabled: e.target.checked })}
-          className="size-4 accent-[var(--accent)]"
+          className="size-5 shrink-0 accent-[var(--accent)]"
         />
       </label>
 
@@ -86,7 +86,7 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
           type="checkbox"
           checked={prefs.memorialConsent}
           onChange={(e) => save({ memorialConsent: e.target.checked })}
-          className="mt-1 size-4 accent-[var(--accent)]"
+          className="mt-1 size-5 shrink-0 accent-[var(--accent)]"
         />
       </label>
 
@@ -99,7 +99,8 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
           step={0.05}
           value={prefs.intensityScale}
           onChange={(e) => save({ intensityScale: Number(e.target.value) })}
-          className="w-full accent-[var(--accent)]"
+          // h-11: um slider de 16px é quase impossível de agarrar com o dedo.
+          className="h-11 w-full accent-[var(--accent)]"
         />
       </div>
 
@@ -114,13 +115,13 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
         ).map(([key, label, Icon]) => (
           <label
             key={key}
-            className="flex cursor-pointer items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm"
+            className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm"
           >
             <input
               type="checkbox"
               checked={prefs.channels[key]}
               onChange={(e) => save({ channels: { ...prefs.channels, [key]: e.target.checked } })}
-              className="size-4 accent-[var(--accent)]"
+              className="size-5 shrink-0 accent-[var(--accent)]"
             />
             <Icon className="size-3.5 text-faint" />
             {label}
@@ -148,7 +149,7 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
           Beijo no rosto, testa, carícia — personalizado por relação. Máscara VR / patch no futuro;
           hoje vibração curta no telefone.
         </p>
-        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+        <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm">
           <span>Ativar háptica facial</span>
           <input
             type="checkbox"
@@ -157,7 +158,7 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
               setFacialPrefs({ enabled: e.target.checked });
               setFacial(loadFacialPrefs());
             }}
-            className="size-4 accent-[var(--accent)]"
+            className="size-5 shrink-0 accent-[var(--accent)]"
           />
         </label>
         <label className="flex cursor-pointer items-start justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm">
@@ -174,13 +175,13 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
               setFacialPrefs({ facialConsent: e.target.checked });
               setFacial(loadFacialPrefs());
             }}
-            className="mt-1 size-4 accent-[var(--accent)]"
+            className="mt-1 size-5 shrink-0 accent-[var(--accent)]"
           />
         </label>
         <div className="space-y-1">
           <Label>Lado preferido do rosto</Label>
           <select
-            className="flex h-10 w-full rounded-md bg-surface-2 px-3 text-sm"
+            className="flex h-11 w-full rounded-md bg-surface-2 px-3 text-sm"
             value={facial.preferredCheek}
             onChange={(e) => {
               setFacialPrefs({
@@ -211,7 +212,7 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
           <input
             value={suitUrl}
             onChange={(e) => setSuitUrl(e.target.value)}
-            className="h-10 min-w-[12rem] flex-1 rounded-md bg-surface-2 px-3 text-xs shadow-[var(--shadow-border)]"
+            className="h-11 min-w-[12rem] flex-1 rounded-md bg-surface-2 px-3 text-xs shadow-[var(--shadow-border)]"
             placeholder="ws://127.0.0.1:8765"
           />
           <Button

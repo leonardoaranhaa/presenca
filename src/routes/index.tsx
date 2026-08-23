@@ -100,7 +100,10 @@ function Home() {
       <section className="mt-12">
         <div className="mb-4 flex items-end justify-between gap-3">
           <h2 className="font-display text-2xl">O círculo</h2>
-          <Link to="/circle" className="text-sm text-muted hover:text-foreground">
+          <Link
+            to="/circle"
+            className="inline-flex min-h-11 items-center text-sm text-muted hover:text-foreground"
+          >
             Ver todos
           </Link>
         </div>

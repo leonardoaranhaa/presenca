@@ -67,7 +67,7 @@ export function VoiceControls({ enabled }: { enabled: boolean }) {
   }
 
   return (
-    <div className="pointer-events-auto absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 md:left-auto md:right-4 md:translate-x-0">
+    <div className="pointer-events-auto absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 md:left-auto md:right-4 md:translate-x-0">
       <button
         type="button"
         onClick={() => void toggle()}

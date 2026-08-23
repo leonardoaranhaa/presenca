@@ -17,7 +17,11 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-11 px-4",
-        sm: "h-9 px-3 text-xs",
+        // 44px em todos: o alvo mínimo de toque não muda com o tamanho visual.
+        // O "sm" continua mais leve pelo texto e pelo espaçamento, não por ser
+        // mais difícil de acertar — este produto é para a família toda, e é
+        // usado sobretudo no telemóvel.
+        sm: "h-11 px-3 text-xs",
         lg: "h-12 px-5",
         icon: "size-11",
       },

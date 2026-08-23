@@ -3,6 +3,7 @@
  * Validação com zod: o corpo vem do browser e não é de confiança.
  */
 import { awakenInputSchema, awakenPresence, chatInputSchema, chatWithPresence } from "./ai";
+import { checkRateLimit, clientKey, tooManyRequests } from "./rate-limit";
 
 function badRequest(message: string) {
   return Response.json({ error: message }, { status: 400 });
@@ -17,6 +18,10 @@ async function readJson(req: Request): Promise<unknown | undefined> {
 }
 
 export async function handleChat(req: Request): Promise<Response> {
+  // Antes de ler o corpo: um pedido recusado não deve custar trabalho nenhum.
+  const limite = checkRateLimit("chat", clientKey(req));
+  if (!limite.allowed) return tooManyRequests("chat", limite);
+
   const raw = await readJson(req);
   if (raw === undefined) return badRequest("JSON inválido.");
 
@@ -31,6 +36,9 @@ export async function handleChat(req: Request): Promise<Response> {
 }
 
 export async function handleAwaken(req: Request): Promise<Response> {
+  const limite = checkRateLimit("awaken", clientKey(req));
+  if (!limite.allowed) return tooManyRequests("awaken", limite);
+
   const raw = await readJson(req);
   if (raw === undefined) return badRequest("JSON inválido.");
 

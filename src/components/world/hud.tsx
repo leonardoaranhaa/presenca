@@ -88,8 +88,12 @@ export function WorldHud({
           <div className="pointer-events-none absolute right-4 top-[max(0.75rem,env(safe-area-inset-top))] z-10">
             <VrButton canvas={vrCanvas} />
           </div>
+          {/* z-20 e bottom-40: a área de rotação da câmara ocupa metade do ecrã
+              e vem depois no DOM, portanto tapava estes botões; e o joystick,
+              com 120px no canto, tapava o primeiro gesto. Num telemóvel isto
+              deixava a interação do mundo inacessível. */}
           {close && nearest && !chatting && (
-            <div className="absolute bottom-28 left-1/2 z-10 flex w-[min(100%,22rem)] -translate-x-1/2 flex-col items-center gap-2 px-3">
+            <div className="absolute bottom-40 left-1/2 z-20 flex w-[min(100%,22rem)] -translate-x-1/2 flex-col items-center gap-2 px-3">
               <button
                 type="button"
                 onClick={() => setActive(nearest.id)}
@@ -196,7 +200,7 @@ function TouchControls({ enabled }: { enabled: boolean }) {
     <>
       <div
         ref={base}
-        className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-5 z-10 size-[120px] rounded-full bg-foreground/10 md:hidden"
+        className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-5 z-20 size-[120px] rounded-full bg-foreground/10 md:hidden"
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           moveStick(e, base.current, knob.current);

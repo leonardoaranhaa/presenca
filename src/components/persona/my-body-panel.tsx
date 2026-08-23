@@ -151,10 +151,10 @@ export function MyBodyPanel() {
           <strong className="text-foreground">Com Mixamo:</strong> clips Idle/Walk/Hug no
           AnimationMixer. Debug: <code className="text-[10px]">window.__avatarAnimMode</code>
         </p>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
           <input
             type="checkbox"
-            className="size-4 accent-[var(--accent)]"
+            className="size-5 shrink-0 accent-[var(--accent)]"
             checked={!!player.bodyScan?.rigged}
             onChange={(e) => {
               if (!player.bodyScan?.glbUrl) return;
@@ -171,7 +171,8 @@ export function MyBodyPanel() {
         </details>
       </div>
 
-      <p className="text-[11px] leading-relaxed text-faint">
+      {/* Aviso de privacidade: é para ser lido, não para caber. */}
+      <p className="text-xs leading-relaxed text-muted">
         Privacidade: o GLB fica no armazenamento local do browser (ou na URL que indicar). Não
         partilhe scans de menores. O corpo digital é representação para o encontro — não identidade
         legal.

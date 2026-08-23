@@ -124,6 +124,13 @@ sincronização opcional com cifra do lado do cliente mantém a promessa de
 privacidade sem perder a permanência. Convém decidir antes de haver utilizadores
 com dados a sério.
 
+**Decidido (22/08/2026):** fica para quando houver algo mais concreto. Até lá,
+endurecer o local-first — feito: media em IndexedDB, versão e migração do
+estado, e a UI a declarar que os dados vivem só neste aparelho.
+
+**Alvo de plataforma:** todo o desenvolvimento é no web app; mobile nativo só
+depois de haver produto vendável.
+
 **3.6 · Recuperação semântica a sério.**
 O BM25F está bem feito e é honesto. O "vetor" é que não: 64 dimensões com hash
 FNV colide muito, e o cosseno sobre isso acrescenta pouco ao BM25F — é ranking

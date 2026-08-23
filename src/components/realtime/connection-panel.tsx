@@ -47,6 +47,20 @@ export function ConnectionPanel() {
         </div>
       </div>
 
+      {cfg.provider === "local" && (
+        <div
+          className="rounded-md bg-surface-2 px-3 py-2 text-xs leading-relaxed text-muted shadow-[var(--shadow-border)]"
+          role="status"
+        >
+          <strong className="font-medium text-foreground">
+            Neste modo a família não se encontra.
+          </strong>{" "}
+          O modo local só liga separadores abertos neste mesmo browser — serve para experimentar
+          sozinho. Para duas pessoas em aparelhos diferentes estarem no mesmo lugar é preciso o
+          PartyKit, publicado à parte.
+        </div>
+      )}
+
       <div className="space-y-1.5">
         <Label>Modo</Label>
         <select
@@ -105,11 +119,11 @@ export function ConnectionPanel() {
           <code className="text-[10px] text-foreground">TURN_SECRET</code> (credenciais a expirar).
           Abaixo é fallback no browser (menos seguro).
         </p>
-        <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm">
+        <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2 text-sm">
           <span>Usar servidor TURN</span>
           <input
             type="checkbox"
-            className="size-4 accent-[var(--accent)]"
+            className="size-5 shrink-0 accent-[var(--accent)]"
             checked={ice.enabled}
             onChange={(e) => setIce({ ...ice, enabled: e.target.checked })}
           />
