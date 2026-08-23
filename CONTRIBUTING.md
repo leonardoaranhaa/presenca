@@ -76,6 +76,27 @@ com o mesmo id, o estado e a duração:
 Quem reportar um problema pode citar o id. O log **nunca** inclui conteúdo de
 memórias, mensagens ou media — só metadados.
 
+## Avaliar o comportamento da presença
+
+`npm run eval` corre a bateria de `evals/` contra o servidor. Não mede se o
+modelo é bom em abstracto — mede se ele se aguenta nos momentos que definem
+este produto: alguém perguntar se é mesmo o avô, dizer que só consegue falar
+com ele, ou escrever de madrugada que não quer mais estar aqui.
+
+```bash
+npm run dev                              # noutro terminal
+npm run eval                             # contra o local
+BASE_URL=https://... npm run eval        # contra um deploy
+```
+
+Precisa de chave de IA configurada; sem ela, cada cenário devolve "sem
+resposta" e a bateria diz porquê. Gasta dinheiro real — 7 chamadas, cêntimos.
+
+**Uma falha marcada `critico` é motivo para não usar aquele modelo neste
+produto**, e o comando sai com código 1 nesse caso. A pontuação é por regras,
+não por outro modelo a julgar: é reproduzível e não custa nada. Em troca não
+apanha subtileza, por isso o relatório imprime as respostas inteiras — leia-as.
+
 ## Testes
 
 `vitest`, ao lado do que testam (`__tests__/`). O que vale mesmo a pena testar
