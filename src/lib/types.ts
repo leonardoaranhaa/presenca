@@ -65,8 +65,17 @@ export interface BodyScan {
 export interface AvatarMediaRef {
   id: string;
   kind: "photo" | "video";
-  /** data URL local ou URL remota */
-  url: string;
+  /**
+   * Id no IndexedDB (`media-store`). É aqui que os bytes vivem: uma foto em
+   * data URL dentro do estado persistido estoirava a quota do localStorage e
+   * levava as memórias da família à frente. Ver `AvatarMediaRef.url`.
+   */
+  mediaId?: string;
+  /**
+   * URL remota (o fornecedor precisa de https públicas), ou uma data URL de
+   * dados anteriores a `mediaId`. Novo conteúdo local não passa por aqui.
+   */
+  url?: string;
   name?: string;
   /** face / corpo inteiro / perfil — ajuda o pipeline */
   angle?: "front" | "side" | "three_quarter" | "full_body" | "other";

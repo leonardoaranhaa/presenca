@@ -9,23 +9,25 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   CAPTURE_GUIDE,
   addMediaToJob,
+  urlsParaFornecedor,
   completeJobWithGlb,
   jobFromPersona,
   kindFromFile,
   processAvatarJob,
   queueSelfService,
   queueStudio,
-  readFileAsDataUrl,
   statusLabel,
   touchJob,
   validateMediaFile,
 } from "@/lib/avatar-from-media";
 import { featureAllowed, loadPrivacyPrefs } from "@/lib/lgpd";
 import { usePresence } from "@/lib/store";
-import type { AvatarBuildJob, Persona } from "@/lib/types";
+import type { AvatarBuildJob, AvatarMediaRef, Persona } from "@/lib/types";
 import { validateGlbRef } from "@/lib/asset-pipeline";
 import { GlbPreview } from "@/components/persona/glb-preview";
 import { useAvatarJobPoll } from "@/lib/use-avatar-job-poll";
+import { deleteMedia, putMedia } from "@/lib/media-store";
+import { useMediaUrl } from "@/lib/use-media-url";
 
 /**
  * UX: recriar avatar a partir de fotos/vídeos.
@@ -102,15 +104,24 @@ export function AvatarFromMediaPanel({ persona }: { persona: Persona }) {
         continue;
       }
       try {
-        const url = await readFileAsDataUrl(file);
+        // Os bytes vão para o IndexedDB; no estado persistido fica só o id.
+        // Uma foto em data URL aqui somava megabytes ao localStorage e, com
+        // umas quantas, a escrita falhava e levava as memórias à frente.
+        const mediaId = await putMedia(file, { personaId: persona.id });
         next = addMediaToJob(next, {
           kind: kindFromFile(file),
-          url,
+          mediaId,
           name: file.name,
           angle: "other",
         });
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Falha ao ler ficheiro");
+        toast.error(
+          e instanceof Error && e.message.includes("IndexedDB")
+            ? "Este browser não guarda ficheiros — as fotos não podem ser adicionadas aqui."
+            : e instanceof Error
+              ? e.message
+              : "Falha ao ler ficheiro",
+        );
       }
     }
     persist(next);
@@ -122,9 +133,7 @@ export function AvatarFromMediaPanel({ persona }: { persona: Persona }) {
       let next = queueSelfService({ ...job, brief, estimatedHeightM: height });
       const photos = next.media.filter((m) => m.kind === "photo").length;
       const videos = next.media.filter((m) => m.kind === "video").length;
-      const imageUrls = next.media
-        .filter((m) => m.kind === "photo" && /^https?:\/\//i.test(m.url))
-        .map((m) => m.url);
+      const imageUrls = urlsParaFornecedor(next.media);
 
       persist(next);
       toast.message("Job criado — polling assíncrono…");
@@ -193,9 +202,7 @@ export function AvatarFromMediaPanel({ persona }: { persona: Persona }) {
       );
       const photos = next.media.filter((m) => m.kind === "photo").length;
       const videos = next.media.filter((m) => m.kind === "video").length;
-      const imageUrls = next.media
-        .filter((m) => m.kind === "photo" && /^https?:\/\//i.test(m.url))
-        .map((m) => m.url);
+      const imageUrls = urlsParaFornecedor(next.media);
 
       const remote = await startPoll({
         personaId: persona.id,
@@ -248,6 +255,11 @@ export function AvatarFromMediaPanel({ persona }: { persona: Persona }) {
   }
 
   function removeMedia(id: string) {
+    // Tirar da lista sem apagar os bytes deixava fotos de família no
+    // IndexedDB sem nada que lhes chegasse — nem para as mostrar, nem para as
+    // apagar depois.
+    const alvo = job.media.find((m) => m.id === id);
+    if (alvo?.mediaId) void deleteMedia(alvo.mediaId);
     const next = {
       ...job,
       media: job.media.filter((m) => m.id !== id),
@@ -326,7 +338,7 @@ export function AvatarFromMediaPanel({ persona }: { persona: Persona }) {
           {job.media.map((m) => (
             <li key={m.id} className="relative overflow-hidden rounded-md bg-surface-2">
               {m.kind === "photo" ? (
-                <img src={m.url} alt="" className="aspect-square w-full object-cover" />
+                <Miniatura media={m} />
               ) : (
                 <div className="flex aspect-square items-center justify-center text-faint">
                   <Clapperboard className="size-6" />
@@ -445,4 +457,19 @@ export function AvatarFromMediaPanel({ persona }: { persona: Persona }) {
       </div>
     </Card>
   );
+}
+
+/**
+ * Miniatura de uma foto do pedido.
+ *
+ * Componente próprio porque `useMediaUrl` é um hook e o `.map()` da lista não
+ * pode chamar hooks. `fallbackDataUrl` cobre os pedidos guardados antes de as
+ * media passarem para o IndexedDB.
+ */
+function Miniatura({ media }: { media: AvatarMediaRef }) {
+  const url = useMediaUrl(media.mediaId, media.url);
+  if (!url) {
+    return <div className="aspect-square w-full bg-surface-2" aria-hidden />;
+  }
+  return <img src={url} alt="" className="aspect-square w-full object-cover" />;
 }

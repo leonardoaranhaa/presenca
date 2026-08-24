@@ -173,6 +173,23 @@ export function statusLabel(s: AvatarBuildStatus): string {
   return map[s];
 }
 
+/**
+ * As media que podem seguir para o gerador 3D.
+ *
+ * O fornecedor descarrega a imagem por URL, portanto só serve o que está
+ * publicamente acessível. E só https: uma data URL aqui seria mandar a foto
+ * da família dentro do pedido, e `http://` mandá-la-ia em claro.
+ *
+ * Vive aqui e não no componente porque a mesma decisão era precisa nos dois
+ * caminhos (self-service e studio) — duas cópias divergiriam.
+ */
+export function urlsParaFornecedor(media: readonly AvatarMediaRef[]): string[] {
+  return media
+    .filter((m) => m.kind === "photo")
+    .map((m) => m.url)
+    .filter((u): u is string => !!u && /^https:\/\//i.test(u));
+}
+
 export function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
