@@ -24,6 +24,8 @@ export type ExtractOptions = {
   /** Gerar grelha (melhor contorno, ~1–2 ms em scans médios) */
   buildGrid?: boolean;
   cellSize?: number;
+  /** Incluir paredes altas/estreitas como oclusores (collider GLB) */
+  includeWallOccluders?: boolean;
 };
 
 const DEFAULTS: Required<ExtractOptions> = {
@@ -34,6 +36,7 @@ const DEFAULTS: Required<ExtractOptions> = {
   agentRadius: 0.28,
   buildGrid: true,
   cellSize: 0.35,
+  includeWallOccluders: false,
 };
 
 export function extractScanCollision(
@@ -198,4 +201,64 @@ function buildOccupancyGrid(
     rows,
     walkable: eroded,
   };
+}
+
+/**
+ * Extrai oclusores (paredes + móveis) a partir de collider GLB low-poly.
+ * Paredes: meshes altos e relativamente estreitos em X ou Z.
+ * Móveis: mesmos critérios de extractScanCollision.
+ */
+export function extractScanOccluders(root: THREE.Object3D, opts: ExtractOptions = {}): Rect[] {
+  const o = { ...DEFAULTS, includeWallOccluders: true, ...opts };
+  root.updateMatrixWorld(true);
+  _box.setFromObject(root);
+  const floorArea = Math.max(0.01, (_box.max.x - _box.min.x) * (_box.max.z - _box.min.z));
+  const floorY = _box.min.y;
+  const out: Rect[] = [];
+  const seen = new Set<string>();
+
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry) return;
+    mesh.geometry.computeBoundingBox();
+    if (!mesh.geometry.boundingBox) return;
+    const wb = mesh.geometry.boundingBox.clone();
+    wb.applyMatrix4(mesh.matrixWorld);
+    wb.getSize(_size);
+
+    const height = _size.y;
+    const area = _size.x * _size.z;
+    if (height < 0.25) return;
+    if (wb.min.y > floorY + 1.4) return;
+
+    const thinX = _size.x < 0.55 && _size.z > 0.4 && height > 1.2;
+    const thinZ = _size.z < 0.55 && _size.x > 0.4 && height > 1.2;
+    const furniture =
+      height >= o.minBlockHeight &&
+      area >= o.minBlockArea &&
+      area <= floorArea * o.maxBlockFractionOfFloor;
+
+    if (!thinX && !thinZ && !furniture) {
+      // paredes grandes (fracção alta do floor mas altura de parede)
+      if (height > 1.5 && area > floorArea * 0.08 && area < floorArea * 0.85) {
+        // ok — possível parede/volume
+      } else {
+        return;
+      }
+    }
+
+    const rect: Rect = {
+      x0: wb.min.x,
+      x1: wb.max.x,
+      z0: wb.min.z,
+      z1: wb.max.z,
+    };
+    const key = `${rect.x0.toFixed(2)}:${rect.x1.toFixed(2)}:${rect.z0.toFixed(2)}:${rect.z1.toFixed(2)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(rect);
+    if (out.length >= 96) return;
+  });
+
+  return out;
 }

@@ -3,6 +3,7 @@ import * as THREE from "three";
 import type { RoomMetrics } from "@/lib/room-metrics";
 import { clampMetrics } from "@/lib/room-metrics";
 import { geoBox } from "./shared-geometries";
+import { RoomFurniture } from "./room-furniture";
 import { makePlasterTexture, makeWoodTexture } from "./textures";
 
 /**
@@ -72,13 +73,7 @@ export function SimpleRoom({ metrics }: { metrics: RoomMetrics }) {
         );
       })}
 
-      {/* móveis mínimos */}
-      <mesh position={[0, 0.35, -hd + 1.4]} scale={[2.2, 0.7, 0.85]} geometry={geoBox()} castShadow>
-        <meshStandardMaterial color="#5c5048" roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 0.38, 0.3]} scale={[1.2, 0.08, 0.7]} geometry={geoBox()}>
-        <meshStandardMaterial color="#6a5340" />
-      </mesh>
+      <RoomFurniture metrics={m} />
     </group>
   );
 }

@@ -1,7 +1,9 @@
 import { Suspense, useEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
+import { GlbErrorBoundary } from "./glb-fallback";
 import * as THREE from "three";
+import { GLTF_LOADER_OPTS } from "@/lib/asset-pipeline";
 import type { Persona } from "@/lib/types";
 import type { SensationEvent } from "@/lib/sensation";
 import { onSensationEvent } from "@/lib/sensation";
@@ -61,7 +63,7 @@ function ScannedPlayerBody({
   heightM: number;
   speedRef?: RefObject<number>;
 }) {
-  const gltf = useGLTF(url);
+  const gltf = useGLTF(url, GLTF_LOADER_OPTS.useDraco, GLTF_LOADER_OPTS.useMeshopt);
   const root = useRef<THREE.Group>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const actionsRef = useRef<Partial<Record<MixamoClipRole, THREE.AnimationAction>>>({});
@@ -255,13 +257,15 @@ export function PlayerBody({
   const url = persona.bodyScan?.glbUrl?.trim();
   if (!url) return null;
   return (
-    <PlayerAvatarFromScan
-      persona={persona}
-      playerPos={playerPos}
-      playerYaw={playerYaw}
-      glbUrl={url}
-      heightM={persona.bodyScan?.heightM ?? 1.7}
-      speedRef={playerSpeedRef}
-    />
+    <GlbErrorBoundary label={`player:${persona.id}`} fallback={null} notify>
+      <PlayerAvatarFromScan
+        persona={persona}
+        playerPos={playerPos}
+        playerYaw={playerYaw}
+        glbUrl={url}
+        heightM={persona.bodyScan?.heightM ?? 1.7}
+        speedRef={playerSpeedRef}
+      />
+    </GlbErrorBoundary>
   );
 }

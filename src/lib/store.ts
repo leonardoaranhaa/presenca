@@ -29,6 +29,7 @@ type State = {
   peerId: string;
   markHydrated: () => void;
   completeOnboarding: () => void;
+  resetOnboarding: () => void;
   resetDemo: () => void;
   upsertPersona: (p: Persona) => void;
   removePersona: (id: string) => void;
@@ -169,6 +170,7 @@ export const usePresence = create<State>()(
       peerId: typeof window !== "undefined" ? ensurePeerId() : "peer_ssr",
       markHydrated: () => set({ hydrated: true }),
       completeOnboarding: () => set({ onboarded: true }),
+      resetOnboarding: () => set({ onboarded: false }),
       resetDemo: () =>
         set({
           onboarded: false,
@@ -295,6 +297,8 @@ export const usePresence = create<State>()(
           bodyGlbUrl: player?.bodyScan?.glbUrl?.startsWith("http")
             ? player.bodyScan.glbUrl
             : undefined,
+          heightM: player?.bodyScan?.heightM,
+          hue: typeof player?.hue === "number" ? player.hue : undefined,
           updatedAt: Date.now(),
         };
         transport.connect(s.activePlaceId, self);
@@ -337,6 +341,8 @@ export const usePresence = create<State>()(
             bodyGlbUrl: player?.bodyScan?.glbUrl?.startsWith("http")
               ? player.bodyScan.glbUrl
               : undefined,
+            heightM: player?.bodyScan?.heightM,
+            hue: typeof player?.hue === "number" ? player.hue : undefined,
             updatedAt: Date.now(),
           },
         });

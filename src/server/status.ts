@@ -16,6 +16,8 @@ export type ServiceStatus = {
   voiceClone: boolean;
   /** Modo do TURN, que decide se o WebRTC atravessa redes móveis. */
   turn: "ephemeral" | "static" | "stun-only";
+  /** LiveKit SFU configurado (URL + API key + secret). */
+  livekit: boolean;
 };
 
 export function serviceStatus(): ServiceStatus {
@@ -31,6 +33,11 @@ export function serviceStatus(): ServiceStatus {
         : temTurn && process.env.TURN_STATIC_USERNAME && process.env.TURN_STATIC_CREDENTIAL
           ? "static"
           : "stun-only",
+    livekit: !!(
+      (process.env.LIVEKIT_URL || process.env.VITE_LIVEKIT_URL)?.trim() &&
+      process.env.LIVEKIT_API_KEY?.trim() &&
+      process.env.LIVEKIT_API_SECRET?.trim()
+    ),
   };
 }
 

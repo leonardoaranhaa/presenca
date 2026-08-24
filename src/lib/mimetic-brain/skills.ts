@@ -1,5 +1,6 @@
 import { uid } from "@/lib/utils";
 import { embedText, topKHybrid } from "./embed";
+import { embedSemantic } from "./semantic";
 import { bumpTraits, pushTrace, unique } from "./model";
 import type { SkillContext, SkillResult } from "./types";
 
@@ -71,6 +72,7 @@ export function skillRetrieve(ctx: SkillContext): SkillResult {
       text: tr.text,
       weight: tr.weight,
       fields: tr.fields,
+      semanticVector: tr.semanticVector,
     })),
     5,
     0.75,
@@ -152,4 +154,127 @@ export function skillComposePrompt(ctx: SkillContext, retrieved: string): SkillR
     .filter(Boolean)
     .join("\n");
   return { model: m, output: block };
+}
+
+/** Recuperação híbrida com embedding semântico da query (e docs se já indexados). */
+export async function skillRetrieveAsync(ctx: SkillContext): Promise<SkillResult> {
+  const q = ctx.query?.trim() || "";
+  if (!q || !ctx.model.traces.length) return { model: ctx.model, output: "" };
+  const querySemantic = await embedSemantic(q);
+  const hits = topKHybrid(
+    q,
+    ctx.model.traces.map((tr) => ({
+      id: tr.id,
+      vector: tr.vector,
+      text: tr.text,
+      weight: tr.weight,
+      fields: tr.fields,
+      semanticVector: tr.semanticVector,
+    })),
+    5,
+    0.75,
+    undefined,
+    querySemantic,
+  );
+  return {
+    model: ctx.model,
+    output: hits
+      .map((h, i) => {
+        const sem = h.semantic != null ? ` sem=${h.semantic.toFixed(2)}` : "";
+        return `(${i + 1}) [bm25f=${h.bm25.toFixed(2)}${sem}] ${h.text}`;
+      })
+      .join("\n"),
+    notes: [`${hits.length} traços hybrid`, querySemantic ? "semantic:on" : "semantic:off"],
+  };
+}
+
+/** Hits estruturados para citação na UI (não só texto no prompt). */
+export type RetrieveHit = {
+  id: string;
+  excerpt: string;
+  score: number;
+  bm25: number;
+  sourceMemoryId?: string;
+};
+
+export function skillRetrieveHits(ctx: SkillContext, k = 5): RetrieveHit[] {
+  const q = ctx.query?.trim() || "";
+  if (!q || !ctx.model.traces.length) return [];
+  const byId = new Map(ctx.model.traces.map((tr) => [tr.id, tr]));
+  const hits = topKHybrid(
+    q,
+    ctx.model.traces.map((tr) => ({
+      id: tr.id,
+      vector: tr.vector,
+      text: tr.text,
+      weight: tr.weight,
+      fields: tr.fields,
+      semanticVector: tr.semanticVector,
+    })),
+    k,
+    0.75,
+  );
+  return hits.map((h) => {
+    const tr = byId.get(h.id);
+    const text = h.text.replace(/\s+/g, " ").trim();
+    return {
+      id: h.id,
+      excerpt: text.length > 120 ? text.slice(0, 117) + "…" : text,
+      score: h.score,
+      bm25: h.bm25,
+      sourceMemoryId: tr?.sourceMemoryId,
+    };
+  });
+}
+
+export async function skillRetrieveHitsAsync(ctx: SkillContext, k = 5): Promise<RetrieveHit[]> {
+  const q = ctx.query?.trim() || "";
+  if (!q || !ctx.model.traces.length) return [];
+  const querySemantic = await embedSemantic(q);
+  const byId = new Map(ctx.model.traces.map((tr) => [tr.id, tr]));
+  const hits = topKHybrid(
+    q,
+    ctx.model.traces.map((tr) => ({
+      id: tr.id,
+      vector: tr.vector,
+      text: tr.text,
+      weight: tr.weight,
+      fields: tr.fields,
+      semanticVector: tr.semanticVector,
+    })),
+    k,
+    0.75,
+    undefined,
+    querySemantic,
+  );
+  return hits.map((h) => {
+    const tr = byId.get(h.id);
+    const text = h.text.replace(/\s+/g, " ").trim();
+    return {
+      id: h.id,
+      excerpt: text.length > 120 ? text.slice(0, 117) + "…" : text,
+      score: h.score,
+      bm25: h.bm25,
+      sourceMemoryId: tr?.sourceMemoryId,
+    };
+  });
+}
+
+/** Preenche semanticVector em traços que ainda não têm (best-effort). */
+export async function enrichTracesWithSemantics(
+  model: import("./types").MimeticModel,
+): Promise<import("./types").MimeticModel> {
+  const { embedSemanticBatch } = await import("./semantic");
+  const need = model.traces.filter((t) => !t.semanticVector?.length);
+  if (!need.length) return model;
+  const vectors = await embedSemanticBatch(need.map((t) => t.text));
+  const byId = new Map(need.map((t, i) => [t.id, vectors[i]]));
+  return {
+    ...model,
+    traces: model.traces.map((t) => {
+      const v = byId.get(t.id);
+      return v?.length ? { ...t, semanticVector: v } : t;
+    }),
+    updatedAt: Date.now(),
+  };
 }

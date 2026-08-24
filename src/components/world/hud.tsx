@@ -17,6 +17,7 @@ export function WorldHud({
   vrCanvas,
   placeName,
   peerCount = 0,
+  capacityWarning = null,
 }: {
   nearestId: string | null;
   nearestDist: number;
@@ -25,19 +26,27 @@ export function WorldHud({
   vrCanvas: HTMLCanvasElement | null;
   placeName?: string;
   peerCount?: number;
+  capacityWarning?: string | null;
 }) {
   const personas = usePresence((s) => s.personas);
   const active = usePresence((s) => s.activeChatId);
   const setActive = usePresence((s) => s.setActiveChat);
   const nearest = personas.find((p) => p.id === nearestId && !p.isPlayer);
   const chatting = personas.find((p) => p.id === active);
-  const close = Boolean(nearest && nearestDist < 2.35);
+  const INTERACT_DIST = 2.5;
+  const close = Boolean(nearest && nearestDist < INTERACT_DIST);
 
   useEffect(() => {
     const id = window.setInterval(() => {
       if (!worldInput.interactQueued) return;
       worldInput.interactQueued = false;
-      if (nearest && nearestDist < 2.35) setActive(nearest.id);
+      if (nearest && nearestDist < 2.5) {
+        setActive(nearest.id);
+      } else if (nearest && nearestDist >= 2.5) {
+        toast.message("Chegue mais perto para conversar", {
+          description: "Aproxime-se até cerca de 2,5 m e pressione E.",
+        });
+      }
     }, 80);
     return () => window.clearInterval(id);
   }, [nearest, nearestDist, setActive]);
@@ -85,6 +94,13 @@ export function WorldHud({
               </span>
             )}
           </div>
+          {capacityWarning && (
+            <div className="pointer-events-none absolute left-4 right-4 top-[max(4rem,calc(env(safe-area-inset-top)+3.5rem))] z-10">
+              <p className="rounded-lg bg-amber-500/15 px-3 py-2 text-center text-[11px] text-amber-100/95 shadow-sm">
+                {capacityWarning}
+              </p>
+            </div>
+          )}
           <div className="pointer-events-none absolute right-4 top-[max(0.75rem,env(safe-area-inset-top))] z-10">
             <VrButton canvas={vrCanvas} />
           </div>
@@ -97,10 +113,12 @@ export function WorldHud({
               <button
                 type="button"
                 onClick={() => setActive(nearest.id)}
+                title="Ou pressione E"
                 className="h-12 rounded-full bg-primary px-5 text-sm text-primary-foreground"
               >
                 Conversar com {nearest.name.split(" ")[0]}
               </button>
+              <p className="text-[11px] text-faint">A menos de 2,5 m · pressione E</p>
               <SensationGestures
                 personaId={nearest.id}
                 personaName={nearest.name}

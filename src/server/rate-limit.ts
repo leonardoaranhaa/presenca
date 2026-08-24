@@ -45,6 +45,7 @@ export type RateLimitRule = {
  * uma família desperta uma presença uma vez, não vinte por minuto.
  */
 export const RATE_LIMITS = {
+  avatar: { limit: 20, windowMs: 60_000 },
   chat: { limit: 20, windowMs: 60_000 },
   awaken: { limit: 5, windowMs: 10 * 60_000 },
   tts: { limit: 30, windowMs: 60_000 },

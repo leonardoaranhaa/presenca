@@ -9,6 +9,11 @@ import { featureAllowed, loadPrivacyPrefs } from "@/lib/lgpd";
 /**
  * Controlo de voz em tempo real no lar (WebRTC).
  */
+function shortId(id: string) {
+  if (id.length <= 10) return id;
+  return id.slice(0, 6) + "…";
+}
+
 export function VoiceControls({ enabled }: { enabled: boolean }) {
   const peerId = usePresence((s) => s.peerId);
   const placeId = usePresence((s) => s.activePlaceId);
@@ -21,6 +26,8 @@ export function VoiceControls({ enabled }: { enabled: boolean }) {
     deafened: false,
     error: null,
     remotePeerIds: [],
+    topology: "mesh",
+    activeSpeakers: [],
   });
 
   const voice = getVoiceChat(() => getRealtimeTransport());
@@ -76,7 +83,13 @@ export function VoiceControls({ enabled }: { enabled: boolean }) {
             ? "flex h-11 items-center gap-2 rounded-full bg-accent px-4 text-xs text-primary-foreground shadow-lg"
             : "flex h-11 items-center gap-2 rounded-full bg-background/80 px-4 text-xs text-foreground shadow-[var(--shadow-border)] backdrop-blur"
         }
-        title="Voz no lugar"
+        title={
+          state.topology === "sfu"
+            ? "Voz via SFU"
+            : state.topology === "capped-mesh"
+              ? "Voz (malha limitada)"
+              : "Voz no lugar"
+        }
       >
         {state.active ? <PhoneOff className="size-4" /> : <Mic className="size-4" />}
         {state.active ? "Sair da voz" : "Voz"}
@@ -102,6 +115,14 @@ export function VoiceControls({ enabled }: { enabled: boolean }) {
           {state.remotePeerIds.length > 0 && (
             <span className="rounded-full bg-surface-2/90 px-2 py-1 text-[10px] text-muted">
               {state.remotePeerIds.length} em voz
+            </span>
+          )}
+          {state.topology === "sfu" && state.activeSpeakers.length > 0 && (
+            <span
+              className="max-w-[12rem] truncate rounded-full bg-accent/20 px-2 py-1 text-[10px] text-accent"
+              title={state.activeSpeakers.join(", ")}
+            >
+              Fala: {state.activeSpeakers.map(shortId).join(" · ")}
             </span>
           )}
         </>

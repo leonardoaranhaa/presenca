@@ -4,6 +4,7 @@ import { Shell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { usePresence } from "@/lib/store";
+import { FirstPresenceWizard } from "@/components/onboarding/first-presence";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -47,6 +48,8 @@ function Home() {
             <Link to="/places">Lugares</Link>
           </Button>
         </div>
+
+        <FirstPresenceWizard />
         <p className="mt-4 text-xs text-faint">
           {living} vivos · {memorials} memoriais no círculo de demonstração
         </p>

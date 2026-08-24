@@ -8,7 +8,11 @@ import {
   skillIngestChat,
   skillIngestMemory,
   skillRetrieve,
+  skillRetrieveAsync,
+  skillRetrieveHitsAsync,
+  enrichTracesWithSemantics,
 } from "./skills";
+import type { RetrieveHit } from "./skills";
 import type { MimeticModel } from "./types";
 
 export class MimeticBrain {
@@ -65,12 +69,51 @@ export class MimeticBrain {
     );
   }
 
+  async retrieveContextAsync(query: string): Promise<string> {
+    this.model = await enrichTracesWithSemantics(this.model);
+    const retrieved = (
+      await skillRetrieveAsync({
+        persona: this.persona,
+        model: this.model,
+        query,
+      })
+    ).output;
+    return (
+      skillComposePrompt({ persona: this.persona, model: this.model, query }, retrieved || "")
+        .output ?? ""
+    );
+  }
+
+  /** Hits RAG para citação na UI (retrieval-bound). */
+  async retrieveHitsAsync(query: string, k = 4): Promise<RetrieveHit[]> {
+    this.model = await enrichTracesWithSemantics(this.model);
+    return skillRetrieveHitsAsync({ persona: this.persona, model: this.model, query }, k);
+  }
+
   composeSystemPrompt(query: string): string {
     const retrieved = skillRetrieve({
       persona: this.persona,
       model: this.model,
       query,
     }).output;
+    const composed = skillComposePrompt(
+      { persona: this.persona, model: this.model, query },
+      retrieved || "",
+    ).output;
+    const base = buildSystemPrompt(this.persona);
+    return `${base}\n\n${composed}\n\n${ETHICAL_GUARDRAILS}`;
+  }
+
+  /** RAG com embeddings semânticos (API) quando disponíveis. */
+  async composeSystemPromptAsync(query: string): Promise<string> {
+    this.model = await enrichTracesWithSemantics(this.model);
+    const retrieved = (
+      await skillRetrieveAsync({
+        persona: this.persona,
+        model: this.model,
+        query,
+      })
+    ).output;
     const composed = skillComposePrompt(
       { persona: this.persona, model: this.model, query },
       retrieved || "",

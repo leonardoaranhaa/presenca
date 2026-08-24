@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Users, Trees, MapPin } from "lucide-react";
+import { Home, Users, Trees, MapPin, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -7,6 +7,7 @@ const NAV = [
   { to: "/world", label: "Mundo", icon: Trees },
   { to: "/places", label: "Lugares", icon: MapPin },
   { to: "/circle", label: "Círculo", icon: Users },
+  { to: "/settings", label: "Ajustes", icon: Settings },
 ] as const;
 
 export function Shell({ children, flush = false }: { children: React.ReactNode; flush?: boolean }) {

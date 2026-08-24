@@ -1,5 +1,7 @@
 # Presença
 
+> **Visão de produto:** [PRODUTO.md](PRODUTO.md) · [ARQUITETURA.md](ARQUITETURA.md) — o que é, para que serve, tecnologias e fase final.
+
 O lar virtual onde a família continua junta — vivos, lugares reais e memoriais.
 
 A presença é **mímica**: imita o jeito, a voz e as memórias que a família confia.
@@ -55,9 +57,15 @@ em `src/server/**`, atrás das rotas `/api/*`.
 
 ## Funcionalidades
 
+### Interação 3D
+
+- Anel no chão na presença mais próxima
+- **Look-at** automático ao conversar
+- Interagir com **E** só a ≤ 2,5 m
+
 ### Cérebro mímico
 
-Recuperação local, sem servidor: BM25F (campos com pesos) + cosseno lexical.
+Recuperação local, sem servidor: **BM25F + embeddings lexicais + **semânticos** (`/api/embed`) fundidos com RRF** (campos com pesos) + cosseno lexical.
 Absorve memórias e a fala da presença; recupera os traços relevantes para cada
 mensagem e compõe o systemPrompt.
 

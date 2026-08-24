@@ -95,3 +95,33 @@ describe("cosine", () => {
     expect(cosine(a, b)).toBeGreaterThan(cosine(a, c));
   });
 });
+
+describe("topKHybrid RRF", () => {
+  const docs = [
+    {
+      id: "goiaba",
+      text: "A goiabeira. Ele plantou a goiabeira no quintal.",
+      vector: embedText("A goiabeira. Ele plantou a goiabeira no quintal."),
+      weight: 1,
+      fields: { title: "A goiabeira", body: "Ele plantou a goiabeira no quintal." },
+    },
+    {
+      id: "cadarco",
+      text: "O cadarço. Amarrar o sapato duas vezes.",
+      vector: embedText("O cadarço. Amarrar o sapato duas vezes."),
+      weight: 1,
+      fields: { title: "O cadarço", body: "Amarrar o sapato duas vezes." },
+    },
+  ];
+
+  it("ranqueia goiabeira para pergunta sobre árvore plantada", () => {
+    const hits = topKHybrid("goiabeira plantou no quintal", docs, 2);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits[0]!.id).toBe("goiaba");
+  });
+
+  it("não devolve hits sem overlap lexical", () => {
+    const hits = topKHybrid("conselhos financeiros da bolsa", docs, 2);
+    expect(hits).toEqual([]);
+  });
+});
