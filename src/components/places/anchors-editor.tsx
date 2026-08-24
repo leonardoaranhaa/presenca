@@ -53,25 +53,26 @@ export function AnchorsEditor({ place }: { place: Place }) {
             <Input
               value={a.label}
               onChange={(e) => update(a.id, { label: e.target.value })}
-              className="h-9"
+              className="h-11"
             />
             <Input
               type="number"
               step="0.1"
               value={a.x}
               onChange={(e) => update(a.id, { x: Number(e.target.value) })}
-              className="h-9"
+              className="h-11"
             />
             <Input
               type="number"
               step="0.1"
               value={a.z}
               onChange={(e) => update(a.id, { z: Number(e.target.value) })}
-              className="h-9"
+              className="h-11"
             />
             <button
               type="button"
-              className="text-xs text-faint hover:text-rose-400"
+              aria-label={`Remover âncora ${a.label}`}
+              className="inline-flex size-11 shrink-0 items-center justify-center text-base text-faint hover:text-rose-400"
               onClick={() => remove(a.id)}
             >
               ×
@@ -80,10 +81,27 @@ export function AnchorsEditor({ place }: { place: Place }) {
         ))}
       </ul>
       <div className="grid grid-cols-[1fr_4rem_4rem_auto] gap-2">
-        <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label" />
-        <Input type="number" step="0.1" value={x} onChange={(e) => setX(Number(e.target.value))} />
-        <Input type="number" step="0.1" value={z} onChange={(e) => setZ(Number(e.target.value))} />
-        <Button type="button" size="sm" onClick={add}>
+        <Input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Label"
+          className="h-11"
+        />
+        <Input
+          type="number"
+          step="0.1"
+          value={x}
+          onChange={(e) => setX(Number(e.target.value))}
+          className="h-11"
+        />
+        <Input
+          type="number"
+          step="0.1"
+          value={z}
+          onChange={(e) => setZ(Number(e.target.value))}
+          className="h-11"
+        />
+        <Button type="button" className="size-11 p-0" onClick={add}>
           +
         </Button>
       </div>

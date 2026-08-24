@@ -1,8 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { abrir } from "./util";
 
 test.describe("Onboarding primeira presença", () => {
   test("wizard aparece na home se não onboarded", async ({ page }) => {
-    await page.goto("/");
+    await abrir(page, "/");
     await page.evaluate(() => {
       try {
         const raw = localStorage.getItem("presenca-storage");

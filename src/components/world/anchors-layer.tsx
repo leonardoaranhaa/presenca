@@ -1,4 +1,4 @@
-import { Billboard, Text } from "@react-three/drei";
+import { Rotulo3D } from "./rotulo-3d";
 import type { Place } from "@/lib/places";
 import { setNavDestination, snapToNavMesh } from "./navmesh";
 import * as THREE from "three";
@@ -35,18 +35,7 @@ export function AnchorsLayer({
             <circleGeometry args={[0.28, 20]} />
             <meshBasicMaterial color="#8a9a86" transparent opacity={0.45} depthWrite={false} />
           </mesh>
-          <Billboard position={[0, 1.15, 0]}>
-            <Text
-              fontSize={0.12}
-              color="#e8e0d2"
-              outlineWidth={0.006}
-              outlineColor="#1c2228"
-              anchorX="center"
-              maxWidth={2}
-            >
-              {a.label}
-            </Text>
-          </Billboard>
+          <Rotulo3D texto={a.label} position={[0, 1.15, 0]} fontSize={0.12} maxWidth={2} />
         </group>
       ))}
     </group>

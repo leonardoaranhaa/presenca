@@ -127,11 +127,12 @@ export function ConnectionPanel() {
           onChange={(e) => setCfg({ ...cfg, livekitUrl: e.target.value })}
           placeholder="wss://presenca-xxxx.livekit.cloud"
         />
-        <label className="flex items-center gap-2 text-sm text-muted">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-muted">
           <input
             type="checkbox"
             checked={!!cfg.preferLivekit}
             onChange={(e) => setCfg({ ...cfg, preferLivekit: e.target.checked })}
+            className="size-5 shrink-0 accent-[var(--accent)]"
           />
           Preferir LiveKit mesmo com poucos peers
         </label>

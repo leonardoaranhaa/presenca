@@ -1,8 +1,9 @@
 import { Suspense, useEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Billboard, Text, useGLTF } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { GLTF_LOADER_OPTS } from "@/lib/asset-pipeline";
+import { Rotulo3D } from "./rotulo-3d";
 import { usePresence } from "@/lib/store";
 import { AVATAR_HUES, ROOM_SPAWNS, type Persona } from "@/lib/types";
 import type { PeerPose } from "@/lib/realtime";
@@ -520,19 +521,7 @@ function PeerAvatar({ peer }: { peer: PeerPose }) {
         )}
       </group>
       <group ref={label} position={[peer.x, 0, peer.z]}>
-        <Billboard position={[0, 2.12, 0]}>
-          <Text
-            fontSize={0.16}
-            color="#e8e0d2"
-            outlineWidth={0.008}
-            outlineColor="#1c2228"
-            anchorX="center"
-            anchorY="middle"
-            maxWidth={3}
-          >
-            {peer.displayName || "Visitante"}
-          </Text>
-        </Billboard>
+        <Rotulo3D texto={peer.displayName || "Visitante"} position={[0, 2.12, 0]} />
       </group>
     </group>
   );

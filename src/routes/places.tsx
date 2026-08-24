@@ -36,7 +36,7 @@ function PlacesPage() {
 
       <p className="mt-4 text-xs text-faint">
         Qualidade 3D, corpo, sensação e privacidade:{" "}
-        <Link to="/settings" className="text-accent underline">
+        <Link to="/settings" className="inline-flex min-h-11 items-center text-accent underline">
           Configurações
         </Link>
         .
@@ -110,8 +110,8 @@ function PlacesPage() {
                   type="button"
                   className={
                     (ap.lightPreset ?? "afternoon") === k
-                      ? "rounded-full bg-primary px-3 py-1.5 text-primary-foreground"
-                      : "rounded-full bg-surface-2 px-3 py-1.5 text-muted"
+                      ? "inline-flex min-h-11 items-center rounded-full bg-primary px-4 text-primary-foreground"
+                      : "inline-flex min-h-11 items-center rounded-full bg-surface-2 px-4 text-muted"
                   }
                   onClick={() => upsertPlace({ ...ap, lightPreset: k })}
                 >

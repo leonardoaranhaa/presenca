@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { abrir } from "./util";
 
 /**
  * O teste que teria apanhado o estado inicial do projeto: não compilava,
@@ -6,29 +7,31 @@ import { expect, test } from "@playwright/test";
  */
 
 test("a página inicial abre e mostra o lar", async ({ page }) => {
-  await page.goto("/");
+  await abrir(page, "/");
   await expect(page.getByRole("heading", { name: /Ninguém se despede/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /Entrar no lar/i })).toBeVisible();
 });
 
 test("o círculo lista a família de demonstração", async ({ page }) => {
-  await page.goto("/circle");
+  await abrir(page, "/circle");
   await expect(page.getByRole("heading", { name: "O círculo" })).toBeVisible();
   await expect(page.getByText("Antônio Oliveira")).toBeVisible();
 });
 
 test("a persona memorial abre com cofre e conversa", async ({ page }) => {
-  await page.goto("/circle");
+  await abrir(page, "/circle");
   await page.getByText("Antônio Oliveira").click();
   await expect(page.getByRole("heading", { name: "Antônio Oliveira" })).toBeVisible();
-  await expect(page.getByPlaceholder(/Falar com/i)).toBeVisible();
+  // Pelo nome acessível, não pelo placeholder: o placeholder muda assim que
+  // /api/status responde que a conversa não está ligada.
+  await expect(page.getByRole("textbox", { name: /mensagem para/i })).toBeVisible();
 });
 
 test("o mundo 3D monta um canvas WebGL", async ({ page }) => {
   const erros: string[] = [];
   page.on("pageerror", (e) => erros.push(e.message));
 
-  await page.goto("/world");
+  await abrir(page, "/world");
 
   const canvas = page.locator("canvas");
   await expect(canvas).toBeVisible({ timeout: 30_000 });
@@ -94,7 +97,7 @@ test.describe("rotas de API", () => {
 
 test.describe("caminhos de falha", () => {
   test("uma rota inexistente mostra o 404, não um ecrã branco", async ({ page }) => {
-    await page.goto("/nao-existe-esta-porta");
+    await abrir(page, "/nao-existe-esta-porta");
     await expect(page.getByText(/não há esta porta no lar/i)).toBeVisible();
     await expect(page.getByRole("link", { name: /voltar à entrada/i })).toBeVisible();
   });
@@ -109,7 +112,7 @@ test.describe("caminhos de falha", () => {
         return null;
       } as unknown as typeof HTMLCanvasElement.prototype.getContext;
     });
-    await page.goto("/world");
+    await abrir(page, "/world");
     await expect(page.getByText(/não consegue desenhar o lar/i)).toBeVisible({ timeout: 20_000 });
     await ctx.close();
   });
@@ -120,7 +123,7 @@ test.describe("caminhos de falha", () => {
     // Simula o 404 de chunk que acontece a quem tem a página aberta durante um
     // redeploy. O padrão cobre dev (módulo por caminho) e produção (chunk com hash).
     await page.route(/experience/, (r) => r.abort());
-    await page.goto("/world");
+    await abrir(page, "/world");
     await expect(page.getByText(/o lar não abriu/i)).toBeVisible({ timeout: 30_000 });
     await ctx.close();
   });
@@ -139,7 +142,7 @@ test.describe("a UI declara o estado real dos serviços", () => {
   });
 
   test("sem chave, a conversa avisa antes de a pessoa escrever", async ({ page }) => {
-    await page.goto("/circle");
+    await abrir(page, "/circle");
     await page.getByText("Antônio Oliveira").click();
 
     const aviso = page.getByText(/voz da presença ainda não está ligada/i);
@@ -150,14 +153,14 @@ test.describe("a UI declara o estado real dos serviços", () => {
     await expect(campo).toBeDisabled();
   });
 
-  test("o painel de lugares mostra o que está ligado", async ({ page }) => {
-    await page.goto("/places");
+  test("as definições mostram o que está ligado", async ({ page }) => {
+    await abrir(page, "/settings");
     await expect(page.getByRole("heading", { name: /o que está ligado/i })).toBeVisible();
     await expect(page.getByText(/voz da presença/i).first()).toBeVisible();
   });
 
   test("o modo local avisa que a família não se encontra", async ({ page }) => {
-    await page.goto("/places");
+    await abrir(page, "/settings");
     await expect(page.getByText(/neste modo a família não se encontra/i)).toBeVisible();
   });
 });

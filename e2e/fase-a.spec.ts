@@ -1,11 +1,12 @@
 import { test, expect } from "@playwright/test";
+import { abrir } from "./util";
 
 /**
  * Smoke Fase A — família no lar (sem WebGL pesado).
  */
 test.describe("Fase A — lugares e checklist scan", () => {
   test("página Lugares mostra checklist de import de scan", async ({ page }) => {
-    await page.goto("/places");
+    await abrir(page, "/places");
     await expect(page.getByRole("heading", { name: /lugares/i })).toBeVisible();
     await expect(page.getByText(/import de scan da casa/i)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/otimizei com meshopt/i)).toBeVisible();
@@ -13,7 +14,7 @@ test.describe("Fase A — lugares e checklist scan", () => {
   });
 
   test("não guarda scan com URL inválida", async ({ page }) => {
-    await page.goto("/places");
+    await abrir(page, "/places");
     const urlInput = page.getByPlaceholder("/scans/casa-web.glb");
     await urlInput.fill("nao-e-url");
     // marcar passos obrigatórios clicando nas linhas do checklist
@@ -34,7 +35,7 @@ test.describe("Fase A — lugares e checklist scan", () => {
 
 test.describe("Fase A — mundo e fallback", () => {
   test("rota /world existe e pede entrada ou mostra lar", async ({ page }) => {
-    await page.goto("/world");
+    await abrir(page, "/world");
     // ou botão Entrar, ou canvas, ou mensagem de erro controlada
     const entrar = page.getByRole("button", { name: /entrar/i });
     const lar = page.getByText(/lar|presença|mundo|não consegue desenhar/i);

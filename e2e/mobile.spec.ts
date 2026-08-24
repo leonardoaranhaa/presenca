@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { abrir } from "./util";
 
 /**
  * O alvo do produto é mobile-first, portanto o telemóvel não é um caso
@@ -19,11 +20,11 @@ test.use({
   hasTouch: true,
 });
 
-const ROTAS = ["/", "/circle", "/create", "/places", "/persona/persona_antonio"];
+const ROTAS = ["/", "/circle", "/create", "/places", "/settings", "/persona/persona_antonio"];
 
 for (const rota of ROTAS) {
   test(`${rota} não transborda na horizontal no telemóvel`, async ({ page }) => {
-    await page.goto(rota, { waitUntil: "networkidle" });
+    await abrir(page, rota);
     const { vw, scrollW } = await page.evaluate(() => ({
       vw: document.documentElement.clientWidth,
       scrollW: document.documentElement.scrollWidth,
@@ -34,7 +35,7 @@ for (const rota of ROTAS) {
 
 for (const rota of ROTAS) {
   test(`${rota} tem alvos de toque de pelo menos 44px`, async ({ page }) => {
-    await page.goto(rota, { waitUntil: "networkidle" });
+    await abrir(page, rota);
     await page.waitForTimeout(500);
 
     const pequenos = await page.evaluate(() => {
@@ -58,14 +59,14 @@ for (const rota of ROTAS) {
 }
 
 test("a navegação principal é tocável no telemóvel", async ({ page }) => {
-  await page.goto("/", { waitUntil: "networkidle" });
+  await abrir(page, "/");
   // Navegar por toque, não por clique de rato, é o gesto real.
   await page.getByRole("link", { name: "Círculo" }).tap();
   await expect(page.getByRole("heading", { name: "O círculo" })).toBeVisible();
 });
 
 test("as linhas de consentimento são tocáveis", async ({ page }) => {
-  await page.goto("/places", { waitUntil: "networkidle" });
+  await abrir(page, "/places");
   await page.waitForTimeout(500);
   const abaixo = await page.evaluate(
     () =>
@@ -86,7 +87,7 @@ test.describe("o mundo é tocável no telemóvel", () => {
    */
 
   async function entrarNoMundo(page: import("@playwright/test").Page) {
-    await page.goto("/world", { waitUntil: "networkidle" });
+    await abrir(page, "/world");
     await page.waitForSelector("canvas", { timeout: 40_000 });
     await page.getByRole("button", { name: "Entrar" }).tap();
     // A persona mais próxima só aparece depois de o mundo correr uns frames.

@@ -212,6 +212,9 @@ export function PresenceChat({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           disabled={conversaIndisponivel}
+          // Nome acessível fixo: o placeholder muda com o estado do serviço e
+          // um placeholder não é nome acessível para um leitor de ecrã.
+          aria-label={`Mensagem para ${persona.name.split(" ")[0]}`}
           placeholder={
             conversaIndisponivel
               ? "A voz da presença não está ligada"
