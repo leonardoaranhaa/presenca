@@ -5,6 +5,7 @@ export type ServiceStatus = {
   voiceClone: boolean;
   turn: "ephemeral" | "static" | "stun-only";
   livekit?: boolean;
+  avatarMesh?: boolean;
 };
 
 /**

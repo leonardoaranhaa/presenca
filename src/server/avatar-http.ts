@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { completeAvatarJob, createAvatarJob, getAvatarJob } from "./avatar-jobs";
+import {
+  completeAvatarJob,
+  createAvatarJob,
+  getAvatarJob,
+  type ServerAvatarJob,
+} from "./avatar-jobs";
 import { checkRateLimit, clientKey, tooManyRequests } from "./rate-limit";
 
 const createSchema = z.object({
@@ -20,6 +25,41 @@ const completeSchema = z.object({
 
 function bad(message: string, status = 400) {
   return Response.json({ error: message }, { status });
+}
+
+/**
+ * O que sai para o cliente.
+ *
+ * `contactEmail` e `imageUrls` entram no job mas não voltam: o id é um UUID,
+ * não uma sessão — quem o tiver não devia poder ler o email de contacto de
+ * quem pediu o avatar. O cliente já sabe o que enviou.
+ */
+function jobPublico(job: ServerAvatarJob) {
+  const { contactEmail: _email, imageUrls: _urls, ...publico } = job;
+  return publico;
+}
+
+/**
+ * O endpoint que completa um job injeta um URL de GLB que a app vai carregar
+ * dentro do lar da família. Sem prova de que quem chama é a equipa, qualquer
+ * pessoa com o id do job punha lá o modelo que quisesse.
+ *
+ * Sem `AVATAR_ADMIN_TOKEN` definido recusa — falhar fechado. O caminho studio
+ * fica indisponível até alguém configurar o segredo, o que é o comportamento
+ * correto: melhor indisponível do que aberto.
+ */
+function adminAutorizado(req: Request): boolean {
+  const esperado = process.env.AVATAR_ADMIN_TOKEN?.trim();
+  if (!esperado) return false;
+  const dado = req.headers
+    .get("authorization")
+    ?.replace(/^Bearer\s+/i, "")
+    .trim();
+  if (!dado || dado.length !== esperado.length) return false;
+  // Comparação de tempo constante: um `===` vaza o prefixo correto pelo tempo.
+  let diff = 0;
+  for (let i = 0; i < esperado.length; i++) diff |= esperado.charCodeAt(i) ^ dado.charCodeAt(i);
+  return diff === 0;
 }
 
 export async function handleCreateAvatarJob(req: Request): Promise<Response> {
@@ -67,7 +107,7 @@ export async function handleCreateAvatarJob(req: Request): Promise<Response> {
       imageUrls: d.imageUrls,
     });
 
-    return Response.json({ job }, { status: 201 });
+    return Response.json({ job: jobPublico(job) }, { status: 201 });
   } catch (e) {
     console.error("[presenca:avatar:create]", e);
     return Response.json({ error: "Falha interna ao criar o job de avatar." }, { status: 500 });
@@ -79,7 +119,7 @@ export async function handleGetAvatarJob(_req: Request, id: string): Promise<Res
     if (!id || id.length > 80) return bad("Id inválido.");
     const job = getAvatarJob(id);
     if (!job) return bad("Job não encontrado.", 404);
-    return Response.json({ job });
+    return Response.json({ job: jobPublico(job) });
   } catch (e) {
     console.error("[presenca:avatar:get]", e);
     return Response.json({ error: "Falha ao ler o job." }, { status: 500 });
@@ -90,6 +130,10 @@ export async function handleCompleteAvatarJob(req: Request, id: string): Promise
   try {
     const limite = checkRateLimit("avatar", clientKey(req));
     if (!limite.allowed) return tooManyRequests("avatar", limite);
+
+    if (!adminAutorizado(req)) {
+      return bad("Completar um job de avatar exige credencial de equipa.", 401);
+    }
 
     if (!id || id.length > 80) return bad("Id inválido.");
 
@@ -103,17 +147,16 @@ export async function handleCompleteAvatarJob(req: Request, id: string): Promise
     if (!parsed.success) return bad("GLB inválido.");
 
     const url = parsed.data.resultGlbUrl.trim();
-    if (
-      !url.toLowerCase().includes(".glb") &&
-      !url.startsWith("blob:") &&
-      !url.startsWith("data:")
-    ) {
-      // aviso suave — ainda permite paths /avatars/x.glb
+    // Só HTTPS ou um caminho do próprio site: o URL vai parar a um `useGLTF`
+    // no browser da família, por isso não pode ser `javascript:` nem um
+    // `data:` arbitrário vindo de fora.
+    if (!/^https:\/\//i.test(url) && !url.startsWith("/")) {
+      return bad("O GLB tem de ser um URL https:// ou um caminho do próprio site.");
     }
 
     const job = completeAvatarJob(id, url);
     if (!job) return bad("Job não encontrado.", 404);
-    return Response.json({ job });
+    return Response.json({ job: jobPublico(job) });
   } catch (e) {
     console.error("[presenca:avatar:complete]", e);
     return Response.json({ error: "Falha ao completar o job." }, { status: 500 });

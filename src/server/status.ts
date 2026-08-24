@@ -18,6 +18,9 @@ export type ServiceStatus = {
   turn: "ephemeral" | "static" | "stun-only";
   /** LiveKit SFU configurado (URL + API key + secret). */
   livekit: boolean;
+  /** Gerador 3D de avatares a partir de fotos. Sem isto o pedido devolve
+   *  needs_provider e a família tem de associar um GLB à mão. */
+  avatarMesh: boolean;
 };
 
 export function serviceStatus(): ServiceStatus {
@@ -37,6 +40,9 @@ export function serviceStatus(): ServiceStatus {
       (process.env.LIVEKIT_URL || process.env.VITE_LIVEKIT_URL)?.trim() &&
       process.env.LIVEKIT_API_KEY?.trim() &&
       process.env.LIVEKIT_API_SECRET?.trim()
+    ),
+    avatarMesh: !!(
+      process.env.AVATAR_MESH_API_URL?.trim() && process.env.AVATAR_MESH_API_KEY?.trim()
     ),
   };
 }

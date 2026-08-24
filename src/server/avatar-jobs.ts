@@ -3,6 +3,21 @@
  *
  * Com AVATAR_MESH_API_URL + KEY: worker chama image-to-3d (Meshy ou generic).
  * Sem provider: needs_provider (studio ou GLB manual).
+ *
+ * ## O Map vive só nesta instância
+ *
+ * O alvo de deploy é serverless (nitro → Vercel). Cada pedido pode cair numa
+ * instância diferente, e as instâncias morrem entre pedidos: um job criado
+ * num POST pode simplesmente não existir no GET seguinte.
+ *
+ * Por isso o caminho que **não** precisa de fornecedor externo decide-se
+ * dentro do próprio POST e devolve já o estado terminal — nunca depende de um
+ * segundo pedido. É o caminho de hoje, porque não há gerador configurado.
+ *
+ * O caminho com fornecedor (e o `completeAvatarJob` do studio, que só acontece
+ * horas depois) precisa mesmo de estado partilhado. Enquanto não houver um KV
+ * ou uma base de dados provisionada, esse caminho **não é fiável em produção**
+ * — está registado no PLANO.md e o /api/status di-lo à UI.
  */
 
 import { randomUUID } from "node:crypto";
@@ -65,10 +80,53 @@ export function createAvatarJob(input: {
     updatedAt: now,
   };
   jobs.set(job.id, job);
+
+  // Decidir aqui o que não precisa de rede: assim o POST devolve o estado
+  // final e o cliente não tem de voltar a um servidor que pode não ter
+  // memória nenhuma deste job.
+  const terminal = decidirSemRede(job);
+  if (terminal) return terminal;
+
   queueMicrotask(() => {
     void advanceJob(job.id);
   });
   return job;
+}
+
+/**
+ * Estados que se decidem sem falar com ninguém. Devolve o job já terminal, ou
+ * `undefined` se for preciso mesmo chamar o fornecedor.
+ */
+function decidirSemRede(job: ServerAvatarJob): ServerAvatarJob | undefined {
+  const parar = (message: string) => {
+    job.status = "needs_provider" as const;
+    job.message = message;
+    job.updatedAt = Date.now();
+    jobs.set(job.id, job);
+    return job;
+  };
+
+  // Studio nunca chama gerador automático — fica para a equipa.
+  if (job.path === "studio") {
+    return parar(
+      "Pedido studio registado. A equipa modela offline; complete o job com POST …/jobs/:id { resultGlbUrl }.",
+    );
+  }
+
+  if (!meshProviderConfigured()) {
+    return parar(
+      "Sem gerador 3D (AVATAR_MESH_API_URL + AVATAR_MESH_API_KEY). Associe um GLB ou use studio.",
+    );
+  }
+
+  const temImagem = job.imageUrls?.some((u) => u.startsWith("https://") || u.startsWith("http://"));
+  if (!temImagem) {
+    return parar(
+      "O gerador precisa de pelo menos uma image_url HTTPS pública. Data URLs locais não são enviadas ao Meshy. Faça upload para storage e reenvie o job com imageUrls.",
+    );
+  }
+
+  return undefined;
 }
 
 async function advanceJob(id: string) {
@@ -79,34 +137,10 @@ async function advanceJob(id: string) {
   job.updatedAt = Date.now();
   jobs.set(id, job);
 
-  // Studio nunca chama gerador automático — fica para a equipa
-  if (job.path === "studio") {
-    job.status = "needs_provider";
-    job.message =
-      "Pedido studio registado. A equipa modela offline; complete o job com POST …/jobs/:id { resultGlbUrl }.";
-    job.updatedAt = Date.now();
-    jobs.set(id, job);
-    return;
-  }
-
-  if (!meshProviderConfigured()) {
-    job.status = "needs_provider";
-    job.message =
-      "Sem gerador 3D (AVATAR_MESH_API_URL + AVATAR_MESH_API_KEY). Associe um GLB ou use studio.";
-    job.updatedAt = Date.now();
-    jobs.set(id, job);
-    return;
-  }
-
+  // `decidirSemRede` já garantiu que há fornecedor e imagem: só chega aqui
+  // quem tem mesmo de sair para a rede.
   const imageUrl = job.imageUrls?.find((u) => u.startsWith("https://") || u.startsWith("http://"));
-  if (!imageUrl) {
-    job.status = "needs_provider";
-    job.message =
-      "O gerador precisa de pelo menos uma image_url HTTPS pública. Data URLs locais não são enviadas ao Meshy. Faça upload para storage e reenvie o job com imageUrls.";
-    job.updatedAt = Date.now();
-    jobs.set(id, job);
-    return;
-  }
+  if (!imageUrl) return;
 
   const started = await startImageToMesh({
     imageUrl,

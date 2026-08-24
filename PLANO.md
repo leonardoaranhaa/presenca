@@ -98,6 +98,36 @@ Enquanto não houver autenticação, o lar partilhado **não deve ser apresentad
 como privado** — nem na UI nem em material de produto. A correcção real é a
 mesma decisão adiada em 3.5.
 
+### Bloqueador — a fila de avatares não tem onde viver
+
+**3.0b · Os jobs de avatar existem só na memória do processo.**
+`src/server/avatar-jobs.ts` guarda-os num `Map`. O alvo de deploy é serverless
+(nitro → Vercel): cada pedido pode cair numa instância diferente, e as
+instâncias morrem entre pedidos. Um job criado num POST pode simplesmente não
+existir no GET seguinte.
+
+Corrigido para o caminho que é o de hoje: sem gerador 3D configurado, o estado
+terminal decide-se dentro do próprio POST e o cliente nunca precisa de voltar.
+Isso faz a funcionalidade funcionar de facto no ambiente que existe.
+
+**O que continua por resolver** são os dois caminhos que precisam mesmo de
+estado partilhado entre pedidos:
+
+- gerar a malha com fornecedor externo (`AVATAR_MESH_API_URL`), onde o polling
+  atravessa vários pedidos;
+- completar um pedido _studio_ horas depois, com `POST /api/avatar/jobs/:id`.
+
+Nenhum dos dois é fiável em produção enquanto não houver um KV ou uma base de
+dados provisionada. **Não é trabalho de código que falta — é uma decisão de
+infraestrutura**, e é a mesma que 3.5 já adia. O `/api/status` declara
+`avatarMesh: false` e a UI diz à família que o corpo tem de ser associado à
+mão, em vez de fingir uma fila que não sobrevive.
+
+O endpoint que completa o job passou a exigir `AVATAR_ADMIN_TOKEN` — injecta um
+URL de modelo que vai ser carregado dentro do lar, e estava aberto a quem
+soubesse o id. Sem o segredo configurado recusa; o caminho studio fica
+indisponível até alguém o pôr, o que é preferível a ficar aberto.
+
 ### Curto prazo — antes de mostrar a alguém de fora
 
 **3.1 · Migrar as media do cofre para IndexedDB.**
