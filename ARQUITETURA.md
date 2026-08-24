@@ -167,22 +167,28 @@ Zustand + `persist` (localStorage):
 
 Ações relevantes: `addMemory`, `pushMessage` (disparam treino mímico), `publishPose`, `connectPlace` / `disconnectPlace`, export/wipe LGPD.
 
+**Nada de bytes aqui.** O `localStorage` tem ~5 MB no total e uma escrita que
+estoire a quota falha o estado **inteiro** — personas e memórias incluídas, não
+só o ficheiro. Fotos, notas de voz, vídeos e as media dos pedidos de avatar
+vivem no IndexedDB (`lib/media-store.ts`); no estado fica um `mediaId`. Já se
+perdeu o cofre uma vez por isto, e o pedido de avatar repetiu o erro.
+
 ---
 
 ## 7. APIs HTTP (`src/routes/api/` + `src/server/`)
 
-| Rota                        | Servidor         | Função                              |
-| --------------------------- | ---------------- | ----------------------------------- |
-| `POST /api/chat`            | `ai.ts`          | Conversa com presença               |
-| `POST /api/awaken`          | `ai.ts`          | Gera soul inicial a partir do cofre |
-| `POST /api/embed`           | `embed.ts`       | Vetores dense (opcional)            |
-| `POST /api/voice/tts`       | `voice.ts`       | Síntese ElevenLabs                  |
-| `POST /api/voice/clone`     | `voice.ts`       | Clone com consentimento             |
-| `GET /api/turn/credentials` | `turn.ts`        | TURN efémero (HMAC coturn)          |
-| `GET /api/status`           | `status.ts`      | Saúde dos serviços                  |
-| `POST /api/avatar/jobs`     | `avatar-jobs.ts` | Criar job de avatar (media → GLB)   |
-| `GET /api/avatar/jobs/:id`  | idem             | Polling do job                      |
-| `POST /api/avatar/jobs/:id` | idem             | Completar job com URL GLB           |
+| Rota                        | Servidor         | Função                                                 |
+| --------------------------- | ---------------- | ------------------------------------------------------ |
+| `POST /api/chat`            | `ai.ts`          | Conversa com presença                                  |
+| `POST /api/awaken`          | `ai.ts`          | Gera soul inicial a partir do cofre                    |
+| `POST /api/embed`           | `embed.ts`       | Vetores dense (opcional)                               |
+| `POST /api/voice/tts`       | `voice.ts`       | Síntese ElevenLabs                                     |
+| `POST /api/voice/clone`     | `voice.ts`       | Clone com consentimento                                |
+| `GET /api/turn/credentials` | `turn.ts`        | TURN efémero (HMAC coturn)                             |
+| `GET /api/status`           | `status.ts`      | Saúde dos serviços                                     |
+| `POST /api/avatar/jobs`     | `avatar-jobs.ts` | Criar job de avatar (media → GLB)                      |
+| `GET /api/avatar/jobs/:id`  | idem             | Polling do job                                         |
+| `POST /api/avatar/jobs/:id` | idem             | Completar job com URL GLB — exige `AVATAR_ADMIN_TOKEN` |
 
 Padrão: rota fina → `*-http.ts` (parse/status) → módulo de domínio → fornecedor externo. Validação **zod** na entrada.
 
@@ -281,7 +287,11 @@ Nenhuma seta de `lib` ou `components` para `server`.
 2. **Embeddings** sempre on (batch no ingest, não só na query)
 3. **Contas** e sync servidor do cofre (hoje local-first)
 4. **Pipeline fotogrametria** → GLB otimizado + collider automático
-5. **Avatar from media** — `avatar-mesh-provider.ts` (Meshy/generic) + fila `avatar-jobs`; studio ou GLB manual sem API
+5. **Avatar from media** — `avatar-mesh-provider.ts` (Meshy/generic) + fila `avatar-jobs`; studio ou GLB manual sem API.
+   As fotos ficam no IndexedDB, não no estado persistido — só o id entra no
+   `localStorage`. A fila em si vive na memória do processo e **não sobrevive a
+   serverless**: o caminho sem fornecedor decide-se dentro do próprio POST para
+   não depender disso; os outros dois precisam de um KV (ver 3.0b no PLANO.md)
 6. **SDK háptico** de traje (mesmo `sensation.ts`, novo canal)
 
 ---
