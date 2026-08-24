@@ -85,6 +85,19 @@ Estado: `npm run typecheck` limpo · `npm test` 50/50 · `npm run build` ok ·
 
 ## 3. Por fazer, por ordem
 
+### Bloqueador — introduzido com o LiveKit
+
+**3.0 · O lugar partilhado não é privado.**
+`/api/livekit/token` emite um token com `roomJoin` e `canPublish` para a sala
+pedida, e o nome da sala é o id do lugar — `place_casa_oliveira`, adivinhável.
+Mitigado com same-origin, limite de pedidos e validade de 30 min, mas **isso
+não resolve**: um pedido directo, sem browser, continua a passar, porque sem
+contas não há como saber se quem pede pertence à família.
+
+Enquanto não houver autenticação, o lar partilhado **não deve ser apresentado
+como privado** — nem na UI nem em material de produto. A correcção real é a
+mesma decisão adiada em 3.5.
+
 ### Curto prazo — antes de mostrar a alguém de fora
 
 **3.1 · Migrar as media do cofre para IndexedDB.**

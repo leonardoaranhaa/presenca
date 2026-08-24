@@ -17,6 +17,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WorldRouteImport } from './routes/world'
 import { Route as ApiAwakenRouteImport } from './routes/api/awaken'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiEmbedRouteImport } from './routes/api/embed'
 import { Route as ApiStatusRouteImport } from './routes/api/status'
 import { Route as PersonaIdRouteImport } from './routes/persona.$id'
 import { Route as ApiAvatarJobsRouteImport } from './routes/api/avatar/jobs'
@@ -64,6 +65,11 @@ const ApiAwakenRoute = ApiAwakenRouteImport.update({
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEmbedRoute = ApiEmbedRouteImport.update({
+  id: '/api/embed',
+  path: '/api/embed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiStatusRoute = ApiStatusRouteImport.update({
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/world': typeof WorldRoute
   '/api/awaken': typeof ApiAwakenRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/embed': typeof ApiEmbedRoute
   '/api/status': typeof ApiStatusRoute
   '/persona/$id': typeof PersonaIdRoute
   '/api/avatar/jobs': typeof ApiAvatarJobsRouteWithChildren
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/world': typeof WorldRoute
   '/api/awaken': typeof ApiAwakenRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/embed': typeof ApiEmbedRoute
   '/api/status': typeof ApiStatusRoute
   '/persona/$id': typeof PersonaIdRoute
   '/api/avatar/jobs': typeof ApiAvatarJobsRouteWithChildren
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   '/world': typeof WorldRoute
   '/api/awaken': typeof ApiAwakenRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/embed': typeof ApiEmbedRoute
   '/api/status': typeof ApiStatusRoute
   '/persona/$id': typeof PersonaIdRoute
   '/api/avatar/jobs': typeof ApiAvatarJobsRouteWithChildren
@@ -173,6 +182,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/api/awaken'
     | '/api/chat'
+    | '/api/embed'
     | '/api/status'
     | '/persona/$id'
     | '/api/avatar/jobs'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/api/awaken'
     | '/api/chat'
+    | '/api/embed'
     | '/api/status'
     | '/persona/$id'
     | '/api/avatar/jobs'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/world'
     | '/api/awaken'
     | '/api/chat'
+    | '/api/embed'
     | '/api/status'
     | '/persona/$id'
     | '/api/avatar/jobs'
@@ -228,6 +240,7 @@ export interface RootRouteChildren {
   WorldRoute: typeof WorldRoute
   ApiAwakenRoute: typeof ApiAwakenRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiEmbedRoute: typeof ApiEmbedRoute
   ApiStatusRoute: typeof ApiStatusRoute
   PersonaIdRoute: typeof PersonaIdRoute
   ApiAvatarJobsRoute: typeof ApiAvatarJobsRouteWithChildren
@@ -293,6 +306,13 @@ declare module '@tanstack/react-router' {
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/embed': {
+      id: '/api/embed'
+      path: '/api/embed'
+      fullPath: '/api/embed'
+      preLoaderRoute: typeof ApiEmbedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/status': {
@@ -375,6 +395,7 @@ const rootRouteChildren: RootRouteChildren = {
   WorldRoute: WorldRoute,
   ApiAwakenRoute: ApiAwakenRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiEmbedRoute: ApiEmbedRoute,
   ApiStatusRoute: ApiStatusRoute,
   PersonaIdRoute: PersonaIdRoute,
   ApiAvatarJobsRoute: ApiAvatarJobsRouteWithChildren,

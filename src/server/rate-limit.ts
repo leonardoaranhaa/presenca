@@ -50,6 +50,10 @@ export const RATE_LIMITS = {
   awaken: { limit: 5, windowMs: 10 * 60_000 },
   tts: { limit: 30, windowMs: 60_000 },
   voiceClone: { limit: 3, windowMs: 60 * 60_000 },
+  /** Embeddings: uma conversa gera vários por mensagem, mas não centenas. */
+  embed: { limit: 60, windowMs: 60_000 },
+  /** Entrar num lugar é raro; pedir a chave dele centenas de vezes, não. */
+  livekitToken: { limit: 10, windowMs: 60_000 },
 } as const satisfies Record<string, RateLimitRule>;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;

@@ -2,6 +2,7 @@
  * Token de acesso LiveKit (JWT HS256) — sem dependência livekit-server-sdk.
  * Docs: https://docs.livekit.io/home/server/generating-tokens/
  */
+import { checkRateLimit, clientKey, tooManyRequests } from "./rate-limit";
 import { createHmac } from "node:crypto";
 
 export type LiveKitTokenOpts = {
@@ -60,7 +61,51 @@ export function getLiveKitEnv(): {
   };
 }
 
+/**
+ * Emite a chave para entrar num lugar em tempo real.
+ *
+ * **Esta rota entrega acesso, não só custo.** Aceitava `room` e `identity` de
+ * query params, sem verificação nenhuma, e devolvia um token com `roomJoin`,
+ * `canPublish` e 6 horas de validade. Os nomes de sala vêm dos ids de lugar —
+ * `place_casa_oliveira` — que são adivinháveis. Qualquer pessoa podia entrar
+ * no lar de uma família com uma identidade inventada e publicar áudio lá
+ * dentro.
+ *
+ * O que se pode fazer sem contas:
+ *  - same-origin, como no TURN: fecha o caminho a partir de outro site
+ *  - limite de pedidos: trava a enumeração de nomes de sala
+ *  - validade curta: uma visita, não um dia de trabalho
+ *
+ * **Isto é mitigação, não solução.** Sem autenticação não há como saber se
+ * quem pede pertence à família — um pedido directo, sem browser, continua a
+ * passar. A correcção real exige contas, e está registada como dependência
+ * em PLANO.md. Enquanto não existirem, o lar partilhado não deve ser
+ * apresentado como privado.
+ */
+/**
+ * Validade do token. Uma visita ao lar dura minutos, não seis horas — e o
+ * cliente pede outro quando precisa. Encurtar reduz a janela em que um token
+ * que vaze continua a servir.
+ */
+const TOKEN_TTL_SEC = 30 * 60;
+
 export async function handleLiveKitToken(request: Request): Promise<Response> {
+  if (request.method !== "GET") {
+    return Response.json({ error: "Method not allowed" }, { status: 405 });
+  }
+
+  // Pedidos cross-origin do browser trazem Origin; os do próprio site não.
+  const origin = request.headers.get("origin");
+  if (origin) {
+    const self = new URL(request.url).origin;
+    if (origin !== self) {
+      return Response.json({ error: "Origem não autorizada" }, { status: 403 });
+    }
+  }
+
+  const limite = checkRateLimit("livekitToken", clientKey(request));
+  if (!limite.allowed) return tooManyRequests("livekitToken", limite);
+
   const { url: lkUrl, apiKey, apiSecret } = getLiveKitEnv();
   if (!apiKey || !apiSecret) {
     return Response.json(
@@ -91,7 +136,7 @@ export async function handleLiveKitToken(request: Request): Promise<Response> {
     identity: safeId,
     name: name.slice(0, 64),
     room: safeRoom,
-    ttlSec: 6 * 3600,
+    ttlSec: TOKEN_TTL_SEC,
   });
 
   return Response.json({
@@ -99,6 +144,6 @@ export async function handleLiveKitToken(request: Request): Promise<Response> {
     url: lkUrl,
     room: safeRoom,
     identity: safeId,
-    expiresIn: 6 * 3600,
+    expiresIn: TOKEN_TTL_SEC,
   });
 }
