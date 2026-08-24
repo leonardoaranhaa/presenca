@@ -28,9 +28,28 @@ function config() {
   return { base, key, provider };
 }
 
+/**
+ * Um `AVATAR_MESH_API_URL` em `http://` mandaria o Bearer token em claro pela
+ * rede. Em vez de o fazer na mesma, o fornecedor conta como não configurado —
+ * assim o `/api/status` diz `avatarMesh: false`, a UI explica-se, e o pedido
+ * devolve `needs_provider` em vez de vazar a chave.
+ *
+ * Localhost fica de fora da regra: é onde se corre um mock em desenvolvimento.
+ */
+function baseSegura(base: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(base);
+  } catch {
+    return false;
+  }
+  if (u.protocol === "https:") return true;
+  return u.protocol === "http:" && (u.hostname === "localhost" || u.hostname === "127.0.0.1");
+}
+
 export function meshProviderConfigured(): boolean {
   const { base, key } = config();
-  return Boolean(base && key);
+  return Boolean(base && key && baseSegura(base));
 }
 
 async function providerFetch(
@@ -38,7 +57,10 @@ async function providerFetch(
   init?: RequestInit,
 ): Promise<{ res: Response; text: string }> {
   const { base, key } = config();
-  const url = path.startsWith("http") ? path : `${base}${path}`;
+  // Sempre relativo à base configurada. Aceitar um URL absoluto aqui era um
+  // caminho para a chave do fornecedor sair para outro host — bastava alguém
+  // passar um link vindo da resposta do próprio fornecedor.
+  const url = `${base}${path}`;
   const res = await fetch(url, {
     ...init,
     headers: {

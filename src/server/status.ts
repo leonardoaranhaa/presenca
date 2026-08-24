@@ -9,6 +9,8 @@
  * **Não expõe segredos**: só se cada chave existe, nunca o valor.
  */
 
+import { meshProviderConfigured } from "./avatar-mesh-provider";
+
 export type ServiceStatus = {
   /** A conversa com a presença precisa de chave de IA. */
   chat: boolean;
@@ -41,9 +43,9 @@ export function serviceStatus(): ServiceStatus {
       process.env.LIVEKIT_API_KEY?.trim() &&
       process.env.LIVEKIT_API_SECRET?.trim()
     ),
-    avatarMesh: !!(
-      process.env.AVATAR_MESH_API_URL?.trim() && process.env.AVATAR_MESH_API_KEY?.trim()
-    ),
+    // A mesma função que o pipeline usa para decidir: duas cópias da regra
+    // divergiriam, e a UI passaria a mentir sobre o que está ligado.
+    avatarMesh: meshProviderConfigured(),
   };
 }
 
