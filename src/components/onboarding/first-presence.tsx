@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check, Heart, House, MessageCircle, Trees } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,7 +41,10 @@ const STEPS = [
 export function FirstPresenceWizard({ force = false }: { force?: boolean }) {
   const onboarded = usePresence((s) => s.onboarded);
   const complete = usePresence((s) => s.completeOnboarding);
-  const [step, setStep] = useState(0);
+  // O passo vem do store, não de `useState`: três dos quatro passos mandam a
+  // pessoa a outra página, e voltar reiniciava o guia do princípio.
+  const step = usePresence((s) => Math.min(s.onboardingStep, STEPS.length - 1));
+  const setStep = usePresence((s) => s.setOnboardingStep);
 
   if (onboarded && !force) return null;
 
@@ -86,12 +88,12 @@ export function FirstPresenceWizard({ force = false }: { force?: boolean }) {
 
       <div className="flex flex-wrap gap-2 pt-1">
         {step > 0 && (
-          <Button type="button" variant="ghost" onClick={() => setStep((s) => s - 1)}>
+          <Button type="button" variant="ghost" onClick={() => setStep(step - 1)}>
             Voltar
           </Button>
         )}
         {!last ? (
-          <Button type="button" onClick={() => setStep((s) => s + 1)}>
+          <Button type="button" onClick={() => setStep(step + 1)}>
             Continuar
             <ArrowRight className="size-4" />
           </Button>
