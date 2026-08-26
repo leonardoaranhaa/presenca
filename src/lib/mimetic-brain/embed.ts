@@ -4,6 +4,8 @@
  * BM25F: o mesmo termo em "title" vale mais que em "body" ou "chat".
  */
 
+import { radical } from "./stem";
+
 const DIM = 64;
 
 export const BM25_K1 = 1.2;
@@ -143,12 +145,17 @@ const VAZIAS = new Set([
 ]);
 
 export function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((t) => t.length > 2 && !VAZIAS.has(t));
+  return (
+    text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((t) => t.length > 2 && !VAZIAS.has(t))
+      // Radicalizar aqui serve o BM25F e o vetor de uma vez: são ambos
+      // construídos a partir desta lista. Ver `stem.ts` para o porquê.
+      .map(radical)
+  );
 }
 
 function hashToken(t: string): number {

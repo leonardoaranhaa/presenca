@@ -7,6 +7,7 @@ import {
   topKBm25F,
   topKHybrid,
 } from "../mimetic-brain/embed";
+import { radical } from "../mimetic-brain/stem";
 
 describe("tokenize", () => {
   it("remove acentos para 'memoria' casar com 'memória'", () => {
@@ -55,8 +56,9 @@ describe("BM25F", () => {
 
   it("conta df ao nível do documento, não por campo", () => {
     const index = buildBm25FIndex(docs);
-    // "goiabeira" aparece em ambos os docs, uma vez cada como documento
-    expect(index.df.get("goiabeira")).toBe(2);
+    // O índice guarda radicais, não palavras: procurar por "goiabeira" à letra
+    // dava undefined e o teste passava a mentir sobre o que o índice tem.
+    expect(index.df.get(radical("goiabeira"))).toBe(2);
   });
 });
 

@@ -177,9 +177,43 @@ depois de haver produto vendável.
 **3.6 · Recuperação semântica a sério.**
 O BM25F está bem feito e é honesto. O "vetor" é que não: 64 dimensões com hash
 FNV colide muito, e o cosseno sobre isso acrescenta pouco ao BM25F — é ranking
-lexical com um nome mais ambicioso. Perguntar _"ele gostava de plantas?"_ não
-recupera a memória da goiabeira, porque nenhuma palavra coincide. Um modelo de
-embeddings pequeno via `transformers.js` mantém tudo local e resolve isto.
+lexical com um nome mais ambicioso.
+
+**Medido (26/08/2026)**, com as memórias de demonstração do Antônio e seis
+perguntas do tipo que uma família faz. Antes, **quatro das seis não devolviam
+nada** — não um mau ranking, resultado vazio, com a presença a responder como
+se não soubesse:
+
+| Pergunta                          | Antes          | Depois         |
+| --------------------------------- | -------------- | -------------- |
+| "ele gostava de plantas?"         | nada           | a goiabeira    |
+| "ele era carinhoso com os netos?" | nada           | a goiabeira    |
+| "ele bebia café?"                 | café das cinco | café das cinco |
+| "a goiabeira"                     | a goiabeira    | a goiabeira    |
+| "o que ele fazia no quintal?"     | nada           | **nada**       |
+| "que fruta ele dava?"             | nada           | **nada**       |
+
+Metade da falha era morfológica, não semântica: o tokenizador não radicalizava,
+por isso _plantas_ e _plantou_ eram palavras sem relação nenhuma, _netos_ nunca
+encontrava _neta_, e _goiabeira_ nunca encontrava _goiaba_. Resolvido em
+`mimetic-brain/stem.ts` — local, sem dependências novas, sem descarregar nada.
+
+**O que fica** são as duas perguntas onde nenhuma regra de sufixo chega:
+_quintal_ e _goiabeira_ não partilham radical, nem _fruta_ e _goiaba_. Isso é
+mesmo semântica, e é o que exige embeddings a sério.
+
+Há duas formas, e a escolha não é minha:
+
+- **`/api/embed` com fornecedor** — o código já existe e está testado; falta
+  `EMBEDDING_API_URL` + chave (ou `XAI_API_KEY`, se o fornecedor expuser
+  embeddings). Zero trabalho de código, custo por pedido, e as memórias da
+  família passam a sair do aparelho — o que obriga a entrada no inventário
+  LGPD e a consentimento.
+- **`transformers.js` local** — mantém tudo no aparelho, sem custo por pedido
+  e sem novo tratamento de dados pessoais. Em troca: dependência grande e um
+  modelo de dezenas de MB descarregado em runtime. Convém pesar contra o que
+  já se aprendeu neste projeto — foi uma busca de fontes em runtime que deixou
+  o mundo 3D preto no telemóvel, e o alvo de plataforma é web app no telefone.
 
 **3.7 · Testes do que não é lógica pura.**
 Os 50 casos cobrem BM25F, cérebro, colisão, TURN e validação de API. Falta o
