@@ -94,6 +94,33 @@ export const DATA_INVENTORY: ProcessingRecord[] = [
     prefKey: "allowBodyScan",
   },
   {
+    id: "avatar_source_media",
+    category: "body_scan_3d",
+    purpose: "Fotos e vídeos usados para construir o avatar 3D de uma pessoa",
+    basis: "consent",
+    // Os bytes ficam no IndexedDB do aparelho (`media-store`), não no estado
+    // persistido: são ficheiros, e o localStorage não os aguenta.
+    storage: "local",
+    retention: "Até remover a media do pedido ou apagar a presença",
+    sensitive: true,
+    canDisable: true,
+    prefKey: "allowBodyScan",
+  },
+  {
+    id: "avatar_mesh_provider",
+    category: "body_scan_3d",
+    purpose: "Gerar a malha 3D a partir de uma fotografia",
+    basis: "consent",
+    // Só acontece com AVATAR_MESH_API_URL configurado e com URLs https
+    // públicas: as fotos locais nunca saem do aparelho por este caminho.
+    storage: "third_party",
+    thirdParty: "Fornecedor image-to-3d configurado (ex.: Meshy)",
+    retention: "Conforme política do fornecedor + pedido de exclusão",
+    sensitive: true,
+    canDisable: true,
+    prefKey: "allowBodyScan",
+  },
+  {
     id: "realtime_pose",
     category: "realtime_pose",
     purpose: "Posição no lugar partilhado (multiplayer)",

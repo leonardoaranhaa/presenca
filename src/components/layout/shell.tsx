@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Users, Trees, MapPin } from "lucide-react";
+import { Home, Users, Trees, MapPin, Settings } from "lucide-react";
+import { usePresence } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -7,13 +8,23 @@ const NAV = [
   { to: "/world", label: "Mundo", icon: Trees },
   { to: "/places", label: "Lugares", icon: MapPin },
   { to: "/circle", label: "Círculo", icon: Users },
+  { to: "/settings", label: "Ajustes", icon: Settings },
 ] as const;
 
 export function Shell({ children, flush = false }: { children: React.ReactNode; flush?: boolean }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const hydrated = usePresence((s) => s.hydrated);
 
   return (
-    <div className="relative min-h-dvh window-glow">
+    <div
+      className="relative min-h-dvh window-glow"
+      // Sinal de que o store rehidratou e os formulários já respondem. Sem
+      // isto não há forma fiável de um teste saber quando pode escrever: os
+      // campos são controlados, e escrever antes disso perde o que se escreve
+      // sem dar erro nenhum. `readyState` e `networkidle` não servem — esperam
+      // por tipos de letra externos que podem nunca chegar.
+      data-hidratado={hydrated ? "1" : undefined}
+    >
       <div className="grain" aria-hidden />
       <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md md:px-8">
         <Link

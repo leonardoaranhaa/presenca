@@ -72,5 +72,12 @@ export default tseslint.config(
     files: ["**/*.test.ts"],
     rules: { "no-restricted-imports": "off" },
   },
+  {
+    // Servidores falsos para desenvolvimento (SFU, traje háptico): correm em
+    // Node, não no browser.
+    files: ["scripts/**/*.mjs", "scripts/**/*.js"],
+    languageOptions: { globals: globals.node },
+    rules: { "no-restricted-imports": "off" },
+  },
   prettier,
 );

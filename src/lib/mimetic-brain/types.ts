@@ -19,6 +19,8 @@ export type MimeticTrace = {
   /** campos separados para BM25F */
   fields?: Partial<Record<MimeticFieldName, string>>;
   vector: number[];
+  /** embedding semântico (API); opcional */
+  semanticVector?: number[];
   weight: number;
   createdAt: number;
   sourceMemoryId?: string;

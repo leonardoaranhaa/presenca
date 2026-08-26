@@ -55,6 +55,22 @@ Exportar `POST`/`GET`/`default` de um ficheiro em `src/routes/api/**` **não
 funciona** — o ficheiro não entra no routeTree e a rota responde 404, em
 silêncio. Já aconteceu com as cinco rotas.
 
+## Bytes nunca vão para o estado persistido
+
+O zustand persiste em `localStorage`, que tem ~5 MB **no total**. Uma escrita
+que estoire a quota não perde só o ficheiro — falha o estado inteiro, personas
+e memórias da família incluídas.
+
+Fotos, notas de voz, vídeos e as media dos pedidos de avatar vivem no
+IndexedDB (`src/lib/media-store.ts`); no estado fica um `mediaId`. Para
+mostrar, `useMediaUrl(mediaId, fallbackDataUrl)`, que trata do `revokeObjectURL`.
+
+`FileReader.readAsDataURL` para dentro do store é o padrão errado: base64
+ainda cresce ~33% sobre o ficheiro. Já custou o cofre de memórias uma vez, e o
+pedido de avatar repetiu o mesmo erro noutro sítio.
+
+Guardado em `src/lib/__tests__/avatar-media-quota.test.ts`.
+
 ## Mapa
 
 ```

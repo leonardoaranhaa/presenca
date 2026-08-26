@@ -9,6 +9,8 @@
  * **Não expõe segredos**: só se cada chave existe, nunca o valor.
  */
 
+import { meshProviderConfigured } from "./avatar-mesh-provider";
+
 export type ServiceStatus = {
   /** A conversa com a presença precisa de chave de IA. */
   chat: boolean;
@@ -16,6 +18,11 @@ export type ServiceStatus = {
   voiceClone: boolean;
   /** Modo do TURN, que decide se o WebRTC atravessa redes móveis. */
   turn: "ephemeral" | "static" | "stun-only";
+  /** LiveKit SFU configurado (URL + API key + secret). */
+  livekit: boolean;
+  /** Gerador 3D de avatares a partir de fotos. Sem isto o pedido devolve
+   *  needs_provider e a família tem de associar um GLB à mão. */
+  avatarMesh: boolean;
 };
 
 export function serviceStatus(): ServiceStatus {
@@ -31,6 +38,14 @@ export function serviceStatus(): ServiceStatus {
         : temTurn && process.env.TURN_STATIC_USERNAME && process.env.TURN_STATIC_CREDENTIAL
           ? "static"
           : "stun-only",
+    livekit: !!(
+      (process.env.LIVEKIT_URL || process.env.VITE_LIVEKIT_URL)?.trim() &&
+      process.env.LIVEKIT_API_KEY?.trim() &&
+      process.env.LIVEKIT_API_SECRET?.trim()
+    ),
+    // A mesma função que o pipeline usa para decidir: duas cópias da regra
+    // divergiriam, e a UI passaria a mentir sobre o que está ligado.
+    avatarMesh: meshProviderConfigured(),
   };
 }
 

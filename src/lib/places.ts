@@ -23,7 +23,7 @@ export interface PlaceAnchor {
 
 /** Metadados de captura / fotogrametria */
 export interface PlaceScan {
-  /** URL do GLB otimizado (Draco) */
+  /** URL do GLB otimizado (preferir Meshopt) */
   glbUrl?: string;
   /** Mesh baixo só para colisão */
   colliderUrl?: string;
@@ -50,6 +50,8 @@ export interface Place {
   metrics?: RoomMetrics;
   /** Asset de fotogrametria / IA */
   scan?: PlaceScan;
+  /** Tom de luz no mundo */
+  lightPreset?: "morning" | "afternoon" | "evening" | "memory";
   isSample?: boolean;
 }
 

@@ -55,7 +55,15 @@ export function PresenceChat({
     //
     // Vai só o bloco recuperado: o prompt (e os limites éticos) é composto no
     // servidor, a partir dos factos da persona.
-    const retrieved = MimeticBrain.bootstrap(persona).retrieveContext(text);
+    const brain = MimeticBrain.bootstrap(persona);
+    const retrieved = await brain.retrieveContextAsync(text);
+    const hits = await brain.retrieveHitsAsync(text, 4);
+    const citations = hits.map((h) => ({
+      id: h.id,
+      excerpt: h.excerpt,
+      score: h.score,
+      sourceMemoryId: h.sourceMemoryId,
+    }));
     const userMsg = {
       id: uid("msg"),
       personaId: persona.id,
@@ -96,6 +104,7 @@ export function PresenceChat({
           role: "presence",
           text: res.text,
           at: Date.now(),
+          citations: citations.length ? citations : undefined,
         });
       }
       requestAnimationFrame(() => {
@@ -119,6 +128,7 @@ export function PresenceChat({
         provider: "browser",
         rate: persona.kind === "memorial" ? 0.92 : 1,
       },
+      { personaId: persona.id },
     );
   }
 
@@ -160,6 +170,22 @@ export function PresenceChat({
               )}
             >
               <p>{m.text}</p>
+              {m.role === "presence" && m.citations && m.citations.length > 0 && (
+                <div className="mt-2 space-y-1 border-t border-border/40 pt-2">
+                  <p className="text-[10px] uppercase tracking-wide text-faint">Memórias usadas</p>
+                  <ul className="space-y-1">
+                    {m.citations.map((c) => (
+                      <li
+                        key={c.id}
+                        className="rounded bg-background/50 px-2 py-1 text-[11px] leading-snug text-muted"
+                        title={`score ${c.score.toFixed(2)}`}
+                      >
+                        “{c.excerpt}”
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {m.role === "presence" && (
                 <button
                   type="button"
@@ -186,6 +212,9 @@ export function PresenceChat({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           disabled={conversaIndisponivel}
+          // Nome acessível fixo: o placeholder muda com o estado do serviço e
+          // um placeholder não é nome acessível para um leitor de ecrã.
+          aria-label={`Mensagem para ${persona.name.split(" ")[0]}`}
           placeholder={
             conversaIndisponivel
               ? "A voz da presença não está ligada"

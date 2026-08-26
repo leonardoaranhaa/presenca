@@ -13,13 +13,31 @@ import { preloadPlayerAvatar, playerSpeedRef } from "./player-avatar";
 import { setCollisionMode } from "./collision";
 import { DEFAULT_METRICS } from "@/lib/room-metrics";
 import { WorldHud } from "./hud";
+import { setTalkLookTarget } from "./look-target";
 import { attachWorldInput, worldInput } from "./input";
 import { PlayerRig } from "./player";
 import { NavClickTarget } from "./nav-click";
 import { PlayerPathRibbon } from "./path-line";
 import { SensationBridge } from "./sensation-bridge";
+import { bootstrapPlaceNavigation } from "./place-navigation";
+import { GestureVfxLayer, gestureAnchor } from "./gesture-vfx";
+import { XrSessionBootstrap, XrEnterButton } from "./xr-session";
+import { RoomPortals, RoomFadeOverlay } from "./room-portals";
+import { AnchorsLayer } from "./anchors-layer";
+import { LightingRig, resolveLightPreset } from "./lighting-rig";
+import { peerCapacityWarning } from "@/lib/peer-limits";
+import { loadRealtimeConfig } from "@/lib/realtime";
+import { recordWorldMinutes } from "@/lib/ethics";
+import { SoftExitBanner } from "@/components/legal/soft-exit-banner";
+import { FpsQualityGuard } from "./fps-quality";
+import { FrustumUpdater } from "./frustum-guard";
+import { OcclusionUpdater } from "./occlusion-guard";
+import { getVoiceChat } from "@/lib/voice-chat";
+import { getRealtimeTransport } from "@/lib/store";
 
 export function WorldExperience() {
+  useEffect(() => {}, []);
+
   /** Persona mais próxima — ref, para não fazer setState a cada frame. */
   const nearestRef = useRef({ id: null as string | null, dist: 99 });
   const personas = usePresence((s) => s.personas);
@@ -35,6 +53,8 @@ export function WorldExperience() {
   const quality = usePresence((s) => s.getQuality());
 
   const [entered, setEntered] = useState(false);
+  const [fadeLabel, setFadeLabel] = useState<string | null>(null);
+  const [wellnessTick, setWellnessTick] = useState(0);
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   /** HUD poll — atualiza no máximo ~10 Hz, não no frame. */
   const [nearHud, setNearHud] = useState({ id: null as string | null, dist: 99 });
@@ -83,6 +103,46 @@ export function WorldExperience() {
     connectPlace();
     return () => disconnectPlace();
   }, [entered, activePlaceId, connectPlace, disconnectPlace]);
+
+  // Wellness: minutos no mundo (Fase A — saída suave)
+  useEffect(() => {
+    if (!entered) return;
+    const id = window.setInterval(() => {
+      recordWorldMinutes(1);
+      setWellnessTick((t) => t + 1);
+    }, 60_000);
+    // primeira marca aos 30s
+    const t0 = window.setTimeout(() => {
+      recordWorldMinutes(0.5);
+      setWellnessTick((t) => t + 1);
+    }, 30_000);
+    return () => {
+      clearInterval(id);
+      clearTimeout(t0);
+    };
+  }, [entered]);
+
+  // Collider + NavMesh por lugar
+  useEffect(() => {
+    const place = places.find((p) => p.id === activePlaceId);
+    bootstrapPlaceNavigation(place);
+  }, [activePlaceId, places]);
+
+  // Âncora dos VFX de gesto = posição do jogador
+  useEffect(() => {
+    let raf = 0;
+    const loop = () => {
+      gestureAnchor.x = pos.current.x;
+      gestureAnchor.z = pos.current.z;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  useEffect(() => {
+    if (!activeChatId) setTalkLookTarget(0, 0, false);
+  }, [activeChatId]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -157,21 +217,13 @@ export function WorldExperience() {
           setCanvasEl(gl.domElement);
         }}
       >
-        <hemisphereLight args={["#8a96a4", "#3a3228", 0.55]} />
-        <directionalLight
-          position={[6, 8, 4]}
-          intensity={1.15}
-          color="#e8e0d2"
-          castShadow={quality.shadows}
-          shadow-mapSize-width={quality.shadowMapSize || 512}
-          shadow-mapSize-height={quality.shadowMapSize || 512}
-          shadow-camera-far={40}
-          shadow-camera-left={-16}
-          shadow-camera-right={16}
-          shadow-camera-top={16}
-          shadow-camera-bottom={-16}
+        <FrustumUpdater />
+        <OcclusionUpdater placeId={activePlaceId} />
+        <LightingRig
+          preset={resolveLightPreset(place)}
+          shadows={quality.shadows}
+          shadowMapSize={quality.shadowMapSize || 512}
         />
-        <ambientLight intensity={0.18} />
         {place?.layout === "scan-glb" ? (
           <ScannedPlace scan={place.scan} metrics={place.metrics ?? DEFAULT_METRICS} />
         ) : place?.layout === "simple-room" ? (
@@ -221,6 +273,14 @@ export function WorldExperience() {
             if (now - lastPublish.current > 120) {
               lastPublish.current = now;
               publishPose({ x, z, yaw });
+              try {
+                getVoiceChat(() => getRealtimeTransport()).updatePoses(
+                  { x, z },
+                  usePresence.getState().peers,
+                );
+              } catch {
+                /* voz ainda não activa */
+              }
             }
           }}
         />
@@ -232,12 +292,18 @@ export function WorldExperience() {
           playerPos={pos.current}
           playerYaw={yawRef}
           talkingId={activeChatId}
+          nearestId={nearHud.id}
           onSelect={(id) => {
             if (worldInput.locked) document.exitPointerLock?.();
             setActive(id);
           }}
         />
         <PeerFigures peers={peers} />
+        <RoomPortals place={place} playerPos={pos} onFade={setFadeLabel} />
+        <AnchorsLayer place={place} playerPos={pos} />
+        <GestureVfxLayer />
+        <XrSessionBootstrap playerPos={pos} playerYaw={yawRef} />
+        <FpsQualityGuard enabled={entered && place?.layout === "scan-glb"} />
       </Canvas>
       <SensationBridge
         personas={personas}
@@ -245,6 +311,14 @@ export function WorldExperience() {
         nearestDist={nearHud.dist}
         playerId={PLAYER_ID}
       />
+      <div className="pointer-events-auto absolute bottom-[max(9rem,env(safe-area-inset-bottom))] left-1/2 z-30 w-[min(100%-1.5rem,22rem)] -translate-x-1/2">
+        <SoftExitBanner tick={wellnessTick} />
+      </div>
+      {/* O RoomPortals já calculava o rótulo da divisão e chamava onFade, mas
+          o overlay nunca era renderizado: a transição entre cômodos existia e
+          não se via. */}
+      <RoomFadeOverlay label={fadeLabel} />
+      <XrEnterButton />
       <WorldHud
         nearestId={nearHud.id}
         nearestDist={nearHud.dist}
@@ -253,6 +327,10 @@ export function WorldExperience() {
         vrCanvas={canvasEl}
         placeName={place?.name}
         peerCount={peers.length}
+        capacityWarning={peerCapacityWarning(
+          peers.length,
+          !!(loadRealtimeConfig().sfuUrl || loadRealtimeConfig().livekitUrl),
+        )}
       />
     </div>
   );

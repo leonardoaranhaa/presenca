@@ -7,6 +7,7 @@ import {
   topKBm25F,
   topKHybrid,
 } from "../mimetic-brain/embed";
+import { radical } from "../mimetic-brain/stem";
 
 describe("tokenize", () => {
   it("remove acentos para 'memoria' casar com 'memória'", () => {
@@ -55,8 +56,9 @@ describe("BM25F", () => {
 
   it("conta df ao nível do documento, não por campo", () => {
     const index = buildBm25FIndex(docs);
-    // "goiabeira" aparece em ambos os docs, uma vez cada como documento
-    expect(index.df.get("goiabeira")).toBe(2);
+    // O índice guarda radicais, não palavras: procurar por "goiabeira" à letra
+    // dava undefined e o teste passava a mentir sobre o que o índice tem.
+    expect(index.df.get(radical("goiabeira"))).toBe(2);
   });
 });
 
@@ -93,5 +95,35 @@ describe("cosine", () => {
     const b = embedText("plantava demais falava de menos");
     const c = embedText("rádio AM no domingo de manhã");
     expect(cosine(a, b)).toBeGreaterThan(cosine(a, c));
+  });
+});
+
+describe("topKHybrid RRF", () => {
+  const docs = [
+    {
+      id: "goiaba",
+      text: "A goiabeira. Ele plantou a goiabeira no quintal.",
+      vector: embedText("A goiabeira. Ele plantou a goiabeira no quintal."),
+      weight: 1,
+      fields: { title: "A goiabeira", body: "Ele plantou a goiabeira no quintal." },
+    },
+    {
+      id: "cadarco",
+      text: "O cadarço. Amarrar o sapato duas vezes.",
+      vector: embedText("O cadarço. Amarrar o sapato duas vezes."),
+      weight: 1,
+      fields: { title: "O cadarço", body: "Amarrar o sapato duas vezes." },
+    },
+  ];
+
+  it("ranqueia goiabeira para pergunta sobre árvore plantada", () => {
+    const hits = topKHybrid("goiabeira plantou no quintal", docs, 2);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits[0]!.id).toBe("goiaba");
+  });
+
+  it("não devolve hits sem overlap lexical", () => {
+    const hits = topKHybrid("conselhos financeiros da bolsa", docs, 2);
+    expect(hits).toEqual([]);
   });
 });

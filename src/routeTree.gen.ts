@@ -13,14 +13,19 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CircleRouteImport } from './routes/circle'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as PlacesRouteImport } from './routes/places'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as WorldRouteImport } from './routes/world'
 import { Route as ApiAwakenRouteImport } from './routes/api/awaken'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiEmbedRouteImport } from './routes/api/embed'
 import { Route as ApiStatusRouteImport } from './routes/api/status'
 import { Route as PersonaIdRouteImport } from './routes/persona.$id'
+import { Route as ApiAvatarJobsRouteImport } from './routes/api/avatar/jobs'
+import { Route as ApiLivekitTokenRouteImport } from './routes/api/livekit/token'
 import { Route as ApiTurnCredentialsRouteImport } from './routes/api/turn/credentials'
 import { Route as ApiVoiceCloneRouteImport } from './routes/api/voice/clone'
 import { Route as ApiVoiceTtsRouteImport } from './routes/api/voice/tts'
+import { Route as ApiAvatarJobsIdRouteImport } from './routes/api/avatar/jobs.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -42,6 +47,11 @@ const PlacesRoute = PlacesRouteImport.update({
   path: '/places',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WorldRoute = WorldRouteImport.update({
   id: '/world',
   path: '/world',
@@ -57,6 +67,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEmbedRoute = ApiEmbedRouteImport.update({
+  id: '/api/embed',
+  path: '/api/embed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStatusRoute = ApiStatusRouteImport.update({
   id: '/api/status',
   path: '/api/status',
@@ -65,6 +80,16 @@ const ApiStatusRoute = ApiStatusRouteImport.update({
 const PersonaIdRoute = PersonaIdRouteImport.update({
   id: '/persona/$id',
   path: '/persona/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAvatarJobsRoute = ApiAvatarJobsRouteImport.update({
+  id: '/api/avatar/jobs',
+  path: '/api/avatar/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLivekitTokenRoute = ApiLivekitTokenRouteImport.update({
+  id: '/api/livekit/token',
+  path: '/api/livekit/token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTurnCredentialsRoute = ApiTurnCredentialsRouteImport.update({
@@ -82,34 +107,49 @@ const ApiVoiceTtsRoute = ApiVoiceTtsRouteImport.update({
   path: '/api/voice/tts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAvatarJobsIdRoute = ApiAvatarJobsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiAvatarJobsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/circle': typeof CircleRoute
   '/create': typeof CreateRoute
   '/places': typeof PlacesRoute
+  '/settings': typeof SettingsRoute
   '/world': typeof WorldRoute
   '/api/awaken': typeof ApiAwakenRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/embed': typeof ApiEmbedRoute
   '/api/status': typeof ApiStatusRoute
   '/persona/$id': typeof PersonaIdRoute
+  '/api/avatar/jobs': typeof ApiAvatarJobsRouteWithChildren
+  '/api/livekit/token': typeof ApiLivekitTokenRoute
   '/api/turn/credentials': typeof ApiTurnCredentialsRoute
   '/api/voice/clone': typeof ApiVoiceCloneRoute
   '/api/voice/tts': typeof ApiVoiceTtsRoute
+  '/api/avatar/jobs/$id': typeof ApiAvatarJobsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/circle': typeof CircleRoute
   '/create': typeof CreateRoute
   '/places': typeof PlacesRoute
+  '/settings': typeof SettingsRoute
   '/world': typeof WorldRoute
   '/api/awaken': typeof ApiAwakenRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/embed': typeof ApiEmbedRoute
   '/api/status': typeof ApiStatusRoute
   '/persona/$id': typeof PersonaIdRoute
+  '/api/avatar/jobs': typeof ApiAvatarJobsRouteWithChildren
+  '/api/livekit/token': typeof ApiLivekitTokenRoute
   '/api/turn/credentials': typeof ApiTurnCredentialsRoute
   '/api/voice/clone': typeof ApiVoiceCloneRoute
   '/api/voice/tts': typeof ApiVoiceTtsRoute
+  '/api/avatar/jobs/$id': typeof ApiAvatarJobsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -117,14 +157,19 @@ export interface FileRoutesById {
   '/circle': typeof CircleRoute
   '/create': typeof CreateRoute
   '/places': typeof PlacesRoute
+  '/settings': typeof SettingsRoute
   '/world': typeof WorldRoute
   '/api/awaken': typeof ApiAwakenRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/embed': typeof ApiEmbedRoute
   '/api/status': typeof ApiStatusRoute
   '/persona/$id': typeof PersonaIdRoute
+  '/api/avatar/jobs': typeof ApiAvatarJobsRouteWithChildren
+  '/api/livekit/token': typeof ApiLivekitTokenRoute
   '/api/turn/credentials': typeof ApiTurnCredentialsRoute
   '/api/voice/clone': typeof ApiVoiceCloneRoute
   '/api/voice/tts': typeof ApiVoiceTtsRoute
+  '/api/avatar/jobs/$id': typeof ApiAvatarJobsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -133,42 +178,57 @@ export interface FileRouteTypes {
     | '/circle'
     | '/create'
     | '/places'
+    | '/settings'
     | '/world'
     | '/api/awaken'
     | '/api/chat'
+    | '/api/embed'
     | '/api/status'
     | '/persona/$id'
+    | '/api/avatar/jobs'
+    | '/api/livekit/token'
     | '/api/turn/credentials'
     | '/api/voice/clone'
     | '/api/voice/tts'
+    | '/api/avatar/jobs/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/circle'
     | '/create'
     | '/places'
+    | '/settings'
     | '/world'
     | '/api/awaken'
     | '/api/chat'
+    | '/api/embed'
     | '/api/status'
     | '/persona/$id'
+    | '/api/avatar/jobs'
+    | '/api/livekit/token'
     | '/api/turn/credentials'
     | '/api/voice/clone'
     | '/api/voice/tts'
+    | '/api/avatar/jobs/$id'
   id:
     | '__root__'
     | '/'
     | '/circle'
     | '/create'
     | '/places'
+    | '/settings'
     | '/world'
     | '/api/awaken'
     | '/api/chat'
+    | '/api/embed'
     | '/api/status'
     | '/persona/$id'
+    | '/api/avatar/jobs'
+    | '/api/livekit/token'
     | '/api/turn/credentials'
     | '/api/voice/clone'
     | '/api/voice/tts'
+    | '/api/avatar/jobs/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -176,11 +236,15 @@ export interface RootRouteChildren {
   CircleRoute: typeof CircleRoute
   CreateRoute: typeof CreateRoute
   PlacesRoute: typeof PlacesRoute
+  SettingsRoute: typeof SettingsRoute
   WorldRoute: typeof WorldRoute
   ApiAwakenRoute: typeof ApiAwakenRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiEmbedRoute: typeof ApiEmbedRoute
   ApiStatusRoute: typeof ApiStatusRoute
   PersonaIdRoute: typeof PersonaIdRoute
+  ApiAvatarJobsRoute: typeof ApiAvatarJobsRouteWithChildren
+  ApiLivekitTokenRoute: typeof ApiLivekitTokenRoute
   ApiTurnCredentialsRoute: typeof ApiTurnCredentialsRoute
   ApiVoiceCloneRoute: typeof ApiVoiceCloneRoute
   ApiVoiceTtsRoute: typeof ApiVoiceTtsRoute
@@ -216,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlacesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/world': {
       id: '/world'
       path: '/world'
@@ -237,6 +308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/embed': {
+      id: '/api/embed'
+      path: '/api/embed'
+      fullPath: '/api/embed'
+      preLoaderRoute: typeof ApiEmbedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/status': {
       id: '/api/status'
       path: '/api/status'
@@ -249,6 +327,20 @@ declare module '@tanstack/react-router' {
       path: '/persona/$id'
       fullPath: '/persona/$id'
       preLoaderRoute: typeof PersonaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/avatar/jobs': {
+      id: '/api/avatar/jobs'
+      path: '/api/avatar/jobs'
+      fullPath: '/api/avatar/jobs'
+      preLoaderRoute: typeof ApiAvatarJobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/livekit/token': {
+      id: '/api/livekit/token'
+      path: '/api/livekit/token'
+      fullPath: '/api/livekit/token'
+      preLoaderRoute: typeof ApiLivekitTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/turn/credentials': {
@@ -272,19 +364,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVoiceTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/avatar/jobs/$id': {
+      id: '/api/avatar/jobs/$id'
+      path: '/$id'
+      fullPath: '/api/avatar/jobs/$id'
+      preLoaderRoute: typeof ApiAvatarJobsIdRouteImport
+      parentRoute: typeof ApiAvatarJobsRoute
+    }
   }
 }
+
+interface ApiAvatarJobsRouteChildren {
+  ApiAvatarJobsIdRoute: typeof ApiAvatarJobsIdRoute
+}
+
+const ApiAvatarJobsRouteChildren: ApiAvatarJobsRouteChildren = {
+  ApiAvatarJobsIdRoute: ApiAvatarJobsIdRoute,
+}
+
+const ApiAvatarJobsRouteWithChildren = ApiAvatarJobsRoute._addFileChildren(
+  ApiAvatarJobsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CircleRoute: CircleRoute,
   CreateRoute: CreateRoute,
   PlacesRoute: PlacesRoute,
+  SettingsRoute: SettingsRoute,
   WorldRoute: WorldRoute,
   ApiAwakenRoute: ApiAwakenRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiEmbedRoute: ApiEmbedRoute,
   ApiStatusRoute: ApiStatusRoute,
   PersonaIdRoute: PersonaIdRoute,
+  ApiAvatarJobsRoute: ApiAvatarJobsRouteWithChildren,
+  ApiLivekitTokenRoute: ApiLivekitTokenRoute,
   ApiTurnCredentialsRoute: ApiTurnCredentialsRoute,
   ApiVoiceCloneRoute: ApiVoiceCloneRoute,
   ApiVoiceTtsRoute: ApiVoiceTtsRoute,

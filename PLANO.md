@@ -85,6 +85,49 @@ Estado: `npm run typecheck` limpo · `npm test` 50/50 · `npm run build` ok ·
 
 ## 3. Por fazer, por ordem
 
+### Bloqueador — introduzido com o LiveKit
+
+**3.0 · O lugar partilhado não é privado.**
+`/api/livekit/token` emite um token com `roomJoin` e `canPublish` para a sala
+pedida, e o nome da sala é o id do lugar — `place_casa_oliveira`, adivinhável.
+Mitigado com same-origin, limite de pedidos e validade de 30 min, mas **isso
+não resolve**: um pedido directo, sem browser, continua a passar, porque sem
+contas não há como saber se quem pede pertence à família.
+
+Enquanto não houver autenticação, o lar partilhado **não deve ser apresentado
+como privado** — nem na UI nem em material de produto. A correcção real é a
+mesma decisão adiada em 3.5.
+
+### Bloqueador — a fila de avatares não tem onde viver
+
+**3.0b · Os jobs de avatar existem só na memória do processo.**
+`src/server/avatar-jobs.ts` guarda-os num `Map`. O alvo de deploy é serverless
+(nitro → Vercel): cada pedido pode cair numa instância diferente, e as
+instâncias morrem entre pedidos. Um job criado num POST pode simplesmente não
+existir no GET seguinte.
+
+Corrigido para o caminho que é o de hoje: sem gerador 3D configurado, o estado
+terminal decide-se dentro do próprio POST e o cliente nunca precisa de voltar.
+Isso faz a funcionalidade funcionar de facto no ambiente que existe.
+
+**O que continua por resolver** são os dois caminhos que precisam mesmo de
+estado partilhado entre pedidos:
+
+- gerar a malha com fornecedor externo (`AVATAR_MESH_API_URL`), onde o polling
+  atravessa vários pedidos;
+- completar um pedido _studio_ horas depois, com `POST /api/avatar/jobs/:id`.
+
+Nenhum dos dois é fiável em produção enquanto não houver um KV ou uma base de
+dados provisionada. **Não é trabalho de código que falta — é uma decisão de
+infraestrutura**, e é a mesma que 3.5 já adia. O `/api/status` declara
+`avatarMesh: false` e a UI diz à família que o corpo tem de ser associado à
+mão, em vez de fingir uma fila que não sobrevive.
+
+O endpoint que completa o job passou a exigir `AVATAR_ADMIN_TOKEN` — injecta um
+URL de modelo que vai ser carregado dentro do lar, e estava aberto a quem
+soubesse o id. Sem o segredo configurado recusa; o caminho studio fica
+indisponível até alguém o pôr, o que é preferível a ficar aberto.
+
 ### Curto prazo — antes de mostrar a alguém de fora
 
 **3.1 · Migrar as media do cofre para IndexedDB.**
@@ -134,9 +177,43 @@ depois de haver produto vendável.
 **3.6 · Recuperação semântica a sério.**
 O BM25F está bem feito e é honesto. O "vetor" é que não: 64 dimensões com hash
 FNV colide muito, e o cosseno sobre isso acrescenta pouco ao BM25F — é ranking
-lexical com um nome mais ambicioso. Perguntar _"ele gostava de plantas?"_ não
-recupera a memória da goiabeira, porque nenhuma palavra coincide. Um modelo de
-embeddings pequeno via `transformers.js` mantém tudo local e resolve isto.
+lexical com um nome mais ambicioso.
+
+**Medido (26/08/2026)**, com as memórias de demonstração do Antônio e seis
+perguntas do tipo que uma família faz. Antes, **quatro das seis não devolviam
+nada** — não um mau ranking, resultado vazio, com a presença a responder como
+se não soubesse:
+
+| Pergunta                          | Antes          | Depois         |
+| --------------------------------- | -------------- | -------------- |
+| "ele gostava de plantas?"         | nada           | a goiabeira    |
+| "ele era carinhoso com os netos?" | nada           | a goiabeira    |
+| "ele bebia café?"                 | café das cinco | café das cinco |
+| "a goiabeira"                     | a goiabeira    | a goiabeira    |
+| "o que ele fazia no quintal?"     | nada           | **nada**       |
+| "que fruta ele dava?"             | nada           | **nada**       |
+
+Metade da falha era morfológica, não semântica: o tokenizador não radicalizava,
+por isso _plantas_ e _plantou_ eram palavras sem relação nenhuma, _netos_ nunca
+encontrava _neta_, e _goiabeira_ nunca encontrava _goiaba_. Resolvido em
+`mimetic-brain/stem.ts` — local, sem dependências novas, sem descarregar nada.
+
+**O que fica** são as duas perguntas onde nenhuma regra de sufixo chega:
+_quintal_ e _goiabeira_ não partilham radical, nem _fruta_ e _goiaba_. Isso é
+mesmo semântica, e é o que exige embeddings a sério.
+
+Há duas formas, e a escolha não é minha:
+
+- **`/api/embed` com fornecedor** — o código já existe e está testado; falta
+  `EMBEDDING_API_URL` + chave (ou `XAI_API_KEY`, se o fornecedor expuser
+  embeddings). Zero trabalho de código, custo por pedido, e as memórias da
+  família passam a sair do aparelho — o que obriga a entrada no inventário
+  LGPD e a consentimento.
+- **`transformers.js` local** — mantém tudo no aparelho, sem custo por pedido
+  e sem novo tratamento de dados pessoais. Em troca: dependência grande e um
+  modelo de dezenas de MB descarregado em runtime. Convém pesar contra o que
+  já se aprendeu neste projeto — foi uma busca de fontes em runtime que deixou
+  o mundo 3D preto no telemóvel, e o alvo de plataforma é web app no telefone.
 
 **3.7 · Testes do que não é lógica pura.**
 Os 50 casos cobrem BM25F, cérebro, colisão, TURN e validação de API. Falta o

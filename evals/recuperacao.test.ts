@@ -69,6 +69,17 @@ describe("recuperação — o que encontra", () => {
     expect(recuperado("fala-me da goiabeira")).toMatch(/goiabeira/i);
   });
 
+  it("liga 'plantas' a quem 'plantou' — atravessado com radicalização", () => {
+    // Esteve na secção de baixo até haver radicalização: "plantas" e "plantou"
+    // eram tokens sem relação nenhuma, e a pergunta mais natural que uma
+    // família faz sobre este avô não encontrava a memória dele.
+    expect(recuperado("ele gostava de plantas?")).toMatch(/goiabeira/i);
+  });
+
+  it("liga o singular ao plural e o feminino ao masculino", () => {
+    expect(recuperado("ele falava das filhas?")).toMatch(/goiabeira/i);
+  });
+
   it("encontra a memória certa, não outra qualquer", () => {
     const r = recuperado("o que ele fazia de manhã?");
     expect(r).toMatch(/café|cinco/i);
@@ -88,11 +99,6 @@ describe("recuperação — não inventa relevância", () => {
     expect(recuperado("que conselhos ele dava?")).toBe("");
   });
 
-  it("não devolve a goiabeira a quem pergunta por plantas", () => {
-    // "plantas" não coincide com "plantou" nem "goiabeira" no índice lexical.
-    expect(recuperado("ele gostava de plantas?")).not.toMatch(/goiabeira/i);
-  });
-
   it("pergunta sem relação nenhuma devolve vazio", () => {
     expect(recuperado("qual era o time de futebol dele?")).toBe("");
   });
@@ -102,10 +108,10 @@ describe("a fronteira que falta atravessar", () => {
   // O alvo da próxima melhoria: recuperação semântica. Estes testes passam
   // enquanto NÃO conseguirmos, e falham assim que conseguirmos — que é o
   // sinal para os mover para a secção de cima.
-
-  it("hoje não liga 'plantas' a 'goiabeira'", () => {
-    expect(recuperado("ele gostava de plantas?")).toBe("");
-  });
+  //
+  // A radicalização já atravessou a parte morfológica ("plantas"→"plantou",
+  // "netos"→"neta", "goiabeira"→"goiaba"). O que fica é o que nenhuma regra
+  // de sufixo alcança: palavras diferentes para a mesma ideia.
 
   it("hoje não liga 'conselhos' ao cadarço", () => {
     expect(recuperado("que conselhos ele dava?")).toBe("");

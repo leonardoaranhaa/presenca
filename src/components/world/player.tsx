@@ -5,6 +5,7 @@ import { usePresence } from "@/lib/store";
 import { slideMove } from "./collision";
 import { sampleMove, worldInput } from "./input";
 import { clearNavDestination, navAgent, stepNavAgent } from "./navmesh";
+import { talkLookTarget } from "./look-target";
 
 const SPEED = 3.35;
 const _fwd = new THREE.Vector3();
@@ -60,6 +61,14 @@ export function PlayerRig({
     if (!chatOpen) {
       yaw.current -= worldInput.lookDx * 0.0022;
       pitch.current -= worldInput.lookDy * 0.0018;
+    } else if (talkLookTarget.active) {
+      // look-at suave à presença em conversa
+      const desired = Math.atan2(-(talkLookTarget.x - pos.x), -(talkLookTarget.z - pos.z));
+      let dy = desired - yaw.current;
+      while (dy > Math.PI) dy -= Math.PI * 2;
+      while (dy < -Math.PI) dy += Math.PI * 2;
+      yaw.current += dy * (1 - Math.exp(-3 * dt));
+      pitch.current += (0.12 - pitch.current) * (1 - Math.exp(-2 * dt));
     }
     worldInput.lookDx = 0;
     worldInput.lookDy = 0;

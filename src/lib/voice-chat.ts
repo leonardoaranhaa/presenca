@@ -7,7 +7,11 @@
  */
 
 import type { PeerPose, RealtimeMessage, RealtimeTransport, VoiceSignalPayload } from "./realtime";
+import { loadRealtimeConfig } from "./realtime";
 import { resolveIceServers } from "./ice-config";
+import { MAX_PEERS_HARD, MAX_PEERS_SOFT, resolveVoiceTopology } from "./peer-limits";
+import { getSfuVoiceClient } from "./sfu-client";
+import { getLiveKitSfuClient, isLiveKitConfigured } from "./livekit-sfu";
 
 type PeerLink = {
   pc: RTCPeerConnection;
@@ -25,6 +29,9 @@ export type VoiceChatState = {
   deafened: boolean;
   error: string | null;
   remotePeerIds: string[];
+  topology: "mesh" | "sfu" | "capped-mesh";
+  /** LiveKit active speakers (identities) */
+  activeSpeakers: string[];
 };
 
 type Listener = (s: VoiceChatState) => void;
@@ -46,6 +53,9 @@ export class VoiceChat {
   private selfPos = { x: 0, z: 0 };
   private peerPos = new Map<string, { x: number; z: number }>();
   private spatial = true;
+  private topology: "mesh" | "sfu" | "capped-mesh" = "mesh";
+  private sfuActive = false;
+  private sfuPoll: ReturnType<typeof setInterval> | null = null;
 
   constructor(private getTransport: () => RealtimeTransport | null) {}
 
@@ -63,12 +73,22 @@ export class VoiceChat {
   }
 
   snapshot(): VoiceChatState {
+    let activeSpeakers: string[] = [];
+    if (this.sfuActive) {
+      try {
+        activeSpeakers = getLiveKitSfuClient().snapshot().activeSpeakers ?? [];
+      } catch {
+        activeSpeakers = [];
+      }
+    }
     return {
       active: this.active,
       muted: this.muted,
       deafened: this.deafened,
       error: this.error,
       remotePeerIds: [...this.peers.keys()],
+      topology: this.topology,
+      activeSpeakers,
     };
   }
 
@@ -84,17 +104,29 @@ export class VoiceChat {
   }
 
   private applySpatial() {
+    const refDist = 1.4; // volume 1
+    const maxDist = 14; // silêncio
     for (const [id, link] of this.peers) {
       if (!link.audio) continue;
+      if (this.deafened) {
+        link.audio.volume = 0;
+        continue;
+      }
       const pos = this.peerPos.get(id);
       if (!pos) {
-        link.audio.volume = this.deafened ? 0 : 0.85;
+        link.audio.volume = 0.85;
         continue;
       }
       const d = Math.hypot(pos.x - this.selfPos.x, pos.z - this.selfPos.z);
-      // 1.5 m = cheio; 12 m = quase mudo
-      const vol = this.deafened ? 0 : Math.max(0.05, Math.min(1, 1.2 - d / 12));
-      link.audio.volume = vol;
+      // atenuação suave (quase inversa com chão)
+      let vol: number;
+      if (d <= refDist) vol = 1;
+      else if (d >= maxDist) vol = 0;
+      else {
+        const t = (d - refDist) / (maxDist - refDist);
+        vol = Math.pow(1 - t, 1.35);
+      }
+      link.audio.volume = Math.max(0, Math.min(1, vol));
     }
   }
 
@@ -132,6 +164,37 @@ export class VoiceChat {
     }
 
     this.active = true;
+    const cfg = loadRealtimeConfig();
+    // peer count aproximado: lista do transporte + 1
+    const n = Math.max(1, (transport.listPeers?.() ?? []).length + 1);
+    const useLivekit =
+      isLiveKitConfigured(cfg.sfuUrl, cfg.livekitUrl) &&
+      (cfg.preferLivekit ||
+        n >= 6 ||
+        resolveVoiceTopology(n, cfg.sfuUrl || cfg.livekitUrl) === "sfu");
+    this.topology = useLivekit ? "sfu" : resolveVoiceTopology(n, cfg.sfuUrl || cfg.livekitUrl);
+    if (this.topology === "sfu" && useLivekit) {
+      this.sfuActive = true;
+      const lk = getLiveKitSfuClient();
+      await lk.start({
+        livekitUrl: cfg.livekitUrl || cfg.sfuUrl,
+        selfId: this.selfId,
+        room: this.placeId,
+        displayName: this.displayName,
+        localStream: this.localStream!,
+      });
+      this.startSfuPoll();
+    } else if (this.topology === "sfu" && cfg.sfuUrl) {
+      this.sfuActive = true;
+      const sfu = getSfuVoiceClient();
+      await sfu.start({
+        sfuUrl: cfg.sfuUrl,
+        selfId: this.selfId,
+        room: this.placeId,
+        displayName: this.displayName,
+        localStream: this.localStream!,
+      });
+    }
     this.unsub = transport.onMessage((msg) => {
       if (msg.type === "voice") void this.onSignal(msg.payload);
       if (msg.type === "leave") void this.removePeer(msg.payload.peerId);
@@ -152,6 +215,11 @@ export class VoiceChat {
 
   async stop() {
     if (!this.active) return;
+    if (this.sfuActive) {
+      await getLiveKitSfuClient().stop();
+      await getSfuVoiceClient().stop();
+      this.sfuActive = false;
+    }
     this.send({
       kind: "voice-leave",
       peerId: this.selfId,
@@ -171,6 +239,10 @@ export class VoiceChat {
     if (this.localStream) {
       for (const t of this.localStream.getAudioTracks()) t.enabled = !muted;
     }
+    if (this.sfuActive) {
+      getLiveKitSfuClient().setMuted(muted);
+      getSfuVoiceClient().setMuted(muted);
+    }
     this.emit();
   }
 
@@ -178,6 +250,18 @@ export class VoiceChat {
     this.deafened = deafened;
     this.applySpatial();
     this.emit();
+  }
+
+  private startSfuPoll() {
+    this.stopSfuPoll();
+    this.sfuPoll = setInterval(() => this.emit(), 400);
+  }
+
+  private stopSfuPoll() {
+    if (this.sfuPoll != null) {
+      clearInterval(this.sfuPoll);
+      this.sfuPoll = null;
+    }
   }
 
   private send(payload: VoiceSignalPayload) {
@@ -233,6 +317,15 @@ export class VoiceChat {
    */
   private async ensurePeer(peerId: string) {
     if (this.peers.has(peerId) || !this.localStream) return;
+    // Malha limitada: não abrir mais ligações P2P além do soft limit
+    if (this.topology === "capped-mesh" && this.peers.size >= MAX_PEERS_SOFT - 1) {
+      return;
+    }
+    if (this.topology === "sfu") {
+      // SFU trata a áudio; não criar mesh
+      return;
+    }
+    if (this.peers.size >= MAX_PEERS_HARD - 1) return;
     const polite = this.selfId < peerId;
     const iceServers = await resolveIceServers();
 
@@ -372,4 +465,10 @@ let voiceSingleton: VoiceChat | null = null;
 export function getVoiceChat(getTransport: () => RealtimeTransport | null) {
   if (!voiceSingleton) voiceSingleton = new VoiceChat(getTransport);
   return voiceSingleton;
+}
+
+/** Instância opcional registada por VoiceControls. */
+export let voiceChatSingleton: VoiceChat | null = null;
+export function registerVoiceChat(vc: VoiceChat | null) {
+  voiceChatSingleton = vc;
 }

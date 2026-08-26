@@ -73,6 +73,8 @@ let simpleBlocks: Rect[] = [];
 let scanFloor: Rect | null = null;
 let scanBlocks: Rect[] = [];
 let scanGrid: ScanCollisionInput["grid"] | null = null;
+/** Oclusores extra do collider GLB (paredes fiéis). */
+let extraOccluders: Rect[] = [];
 
 export function setCollisionMode(
   m: CollisionMode,
@@ -85,6 +87,7 @@ export function setCollisionMode(
   scanFloor = null;
   scanBlocks = [];
   scanGrid = null;
+  if (m !== "scan") extraOccluders = [];
   agentRadius = scan?.agentRadius ?? 0.28;
 
   if (m === "simple-room" && metrics) {
@@ -184,4 +187,64 @@ export function unionRects(rects: Rect[]): Rect | null {
     z1 = Math.max(z1, r.z1);
   }
   return { x0, x1, z0, z1 };
+}
+
+/**
+ * Rects sólidos para occlusion (móveis + paredes grossas sintéticas).
+ * Usado por line-of-sight 2D; não substitui colisão do jogador.
+ */
+export function setScanOccluders(rects: Rect[]) {
+  extraOccluders = rects.slice(0, 96);
+  if (typeof window !== "undefined") {
+    (window as unknown as { __scanOccluders?: number }).__scanOccluders = extraOccluders.length;
+  }
+}
+
+export function clearScanOccluders() {
+  extraOccluders = [];
+}
+
+export function getOccluderRects(): Rect[] {
+  const wallT = 0.22;
+  if (mode === "scan") {
+    const list = [...scanBlocks, ...extraOccluders];
+    if (scanFloor) {
+      const b = scanFloor;
+      // paredes exteriores como lajes finas
+      list.push(
+        { x0: b.x0 - wallT, x1: b.x0 + wallT * 0.5, z0: b.z0, z1: b.z1 },
+        { x0: b.x1 - wallT * 0.5, x1: b.x1 + wallT, z0: b.z0, z1: b.z1 },
+        { x0: b.x0, x1: b.x1, z0: b.z0 - wallT, z1: b.z0 + wallT * 0.5 },
+        { x0: b.x0, x1: b.x1, z0: b.z1 - wallT * 0.5, z1: b.z1 + wallT },
+      );
+    }
+    return list;
+  }
+  if (mode === "simple-room") {
+    const list = [...simpleBlocks];
+    if (simpleWalk[0]) {
+      const b = simpleWalk[0];
+      list.push(
+        { x0: b.x0 - wallT, x1: b.x0, z0: b.z0, z1: b.z1 },
+        { x0: b.x1, x1: b.x1 + wallT, z0: b.z0, z1: b.z1 },
+        { x0: b.x0, x1: b.x1, z0: b.z0 - wallT, z1: b.z0 },
+        // frente: deixar vão da porta (centro ~0)
+        { x0: b.x0, x1: -0.55, z0: b.z1, z1: b.z1 + wallT },
+        { x0: 0.55, x1: b.x1, z0: b.z1, z1: b.z1 + wallT },
+      );
+    }
+    return list;
+  }
+  if (mode === "open") return [];
+  // oliveira: blocos + paredes entre salas (aprox.)
+  return [
+    ...OLIVEIRA_BLOCKS,
+    // parede sala / jardim (excepto vão central)
+    { x0: -5.5, x1: -1.2, z0: 3.2, z1: 3.55 },
+    { x0: 1.2, x1: 5.2, z0: 3.2, z1: 3.55 },
+    // cozinha
+    { x0: -5.95, x1: -5.55, z0: -2.8, z1: 3.2 },
+    // estudo
+    { x0: 5.15, x1: 5.55, z0: -2.8, z1: 3.2 },
+  ];
 }

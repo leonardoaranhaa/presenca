@@ -18,6 +18,14 @@ const MAX_MESSAGES = 80;
 type State = {
   hydrated: boolean;
   onboarded: boolean;
+  /**
+   * Passo do guia da primeira presença.
+   *
+   * Persistido porque três dos quatro passos mandam a pessoa a outra página —
+   * a lugares, a criar uma presença. Guardado só em `useState`, seguir o guia
+   * como ele pede reiniciava-o do princípio a cada regresso.
+   */
+  onboardingStep: number;
   personas: Persona[];
   places: Place[];
   activePlaceId: string;
@@ -29,6 +37,8 @@ type State = {
   peerId: string;
   markHydrated: () => void;
   completeOnboarding: () => void;
+  setOnboardingStep: (passo: number) => void;
+  resetOnboarding: () => void;
   resetDemo: () => void;
   upsertPersona: (p: Persona) => void;
   removePersona: (id: string) => void;
@@ -158,6 +168,7 @@ export const usePresence = create<State>()(
     (set, get) => ({
       hydrated: false,
       onboarded: false,
+      onboardingStep: 0,
       personas: withPrompts(SAMPLE_FAMILY),
       places: SAMPLE_PLACES,
       activePlaceId: SAMPLE_PLACES[0].id,
@@ -168,10 +179,13 @@ export const usePresence = create<State>()(
       peers: [],
       peerId: typeof window !== "undefined" ? ensurePeerId() : "peer_ssr",
       markHydrated: () => set({ hydrated: true }),
-      completeOnboarding: () => set({ onboarded: true }),
+      completeOnboarding: () => set({ onboarded: true, onboardingStep: 0 }),
+      resetOnboarding: () => set({ onboarded: false, onboardingStep: 0 }),
+      setOnboardingStep: (passo) => set({ onboardingStep: Math.max(0, passo) }),
       resetDemo: () =>
         set({
           onboarded: false,
+          onboardingStep: 0,
           personas: withPrompts(SAMPLE_FAMILY),
           places: SAMPLE_PLACES,
           activePlaceId: SAMPLE_PLACES[0].id,
@@ -295,6 +309,8 @@ export const usePresence = create<State>()(
           bodyGlbUrl: player?.bodyScan?.glbUrl?.startsWith("http")
             ? player.bodyScan.glbUrl
             : undefined,
+          heightM: player?.bodyScan?.heightM,
+          hue: typeof player?.hue === "number" ? player.hue : undefined,
           updatedAt: Date.now(),
         };
         transport.connect(s.activePlaceId, self);
@@ -337,6 +353,8 @@ export const usePresence = create<State>()(
             bodyGlbUrl: player?.bodyScan?.glbUrl?.startsWith("http")
               ? player.bodyScan.glbUrl
               : undefined,
+            heightM: player?.bodyScan?.heightM,
+            hue: typeof player?.hue === "number" ? player.hue : undefined,
             updatedAt: Date.now(),
           },
         });
@@ -361,6 +379,7 @@ export const usePresence = create<State>()(
           places: [],
           messages: {},
           onboarded: false,
+          onboardingStep: 0,
           peers: [],
         });
         // Direito à eliminação: tem de levar os bytes também.
@@ -397,6 +416,7 @@ export const usePresence = create<State>()(
       },
       partialize: (s) => ({
         onboarded: s.onboarded,
+        onboardingStep: s.onboardingStep,
         personas: s.personas.map(stripVectors),
         places: s.places,
         activePlaceId: s.activePlaceId,

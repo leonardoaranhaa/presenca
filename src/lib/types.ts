@@ -43,7 +43,7 @@ export interface SoulProfile {
   mimetic?: MimeticModel;
 }
 
-/** Scan do corpo do utilizador (ou de um vivo do círculo, com consentimento). */
+/** Scan / avatar 3D do utilizador ou de uma persona (com consentimento). */
 export interface BodyScan {
   /** GLB texturizado otimizado (estático ou Mixamo-rigged) */
   glbUrl?: string;
@@ -51,11 +51,68 @@ export interface BodyScan {
   colliderUrl?: string;
   /** Altura estimada em metros (escala) */
   heightM?: number;
-  source?: "upload" | "polycam" | "ai" | "parametric" | "mixamo";
+  source?:
+    "upload" | "polycam" | "ai" | "parametric" | "mixamo" | "media_pipeline" | "studio_order";
   /** true se GLB tem skeleton + AnimationClips (Mixamo) */
   rigged?: boolean;
   capturedAt?: number;
   notes?: string;
+  /** Pedido de construção a partir de fotos/vídeos */
+  buildJob?: AvatarBuildJob;
+}
+
+/** Referência a foto/vídeo usado para reconstruir o avatar. */
+export interface AvatarMediaRef {
+  id: string;
+  kind: "photo" | "video";
+  /**
+   * Id no IndexedDB (`media-store`). É aqui que os bytes vivem: uma foto em
+   * data URL dentro do estado persistido estoirava a quota do localStorage e
+   * levava as memórias da família à frente. Ver `AvatarMediaRef.url`.
+   */
+  mediaId?: string;
+  /**
+   * URL remota (o fornecedor precisa de https públicas), ou uma data URL de
+   * dados anteriores a `mediaId`. Novo conteúdo local não passa por aqui.
+   */
+  url?: string;
+  name?: string;
+  /** face / corpo inteiro / perfil — ajuda o pipeline */
+  angle?: "front" | "side" | "three_quarter" | "full_body" | "other";
+  addedAt: number;
+}
+
+export type AvatarBuildStatus =
+  | "draft" /** a reunir media */
+  | "queued_local" /** fila nativa (futuro worker) */
+  | "queued_studio" /** encomenda à equipa Presença */
+  | "processing"
+  | "needs_review"
+  | "ready"
+  | "failed"
+  | "cancelled";
+
+/**
+ * Trabalho de criação de avatar a partir de media.
+ * Nativo (IA/fotogrametria) ou encomenda studio — mesmo modelo de dados.
+ */
+export interface AvatarBuildJob {
+  id: string;
+  personaId: string;
+  status: AvatarBuildStatus;
+  /** self_service = app tenta pipeline; studio = humanos modelam */
+  path: "self_service" | "studio";
+  media: AvatarMediaRef[];
+  /** notas da família (roupa típica, idade a representar, etc.) */
+  brief?: string;
+  /** contacto para encomenda studio (email opcional) */
+  contactEmail?: string;
+  estimatedHeightM?: number;
+  createdAt: number;
+  updatedAt: number;
+  /** quando ready, aponta para o GLB resultante */
+  resultGlbUrl?: string;
+  errorMessage?: string;
 }
 
 export interface Persona {
@@ -82,12 +139,23 @@ export interface Persona {
   bodyScan?: BodyScan;
 }
 
+export interface MemoryCitation {
+  /** id do traço / memória */
+  id: string;
+  /** excerto curto para UI */
+  excerpt: string;
+  score: number;
+  sourceMemoryId?: string;
+}
+
 export interface ChatMessage {
   id: string;
   personaId: string;
   role: "user" | "presence";
   text: string;
   at: number;
+  /** Fontes RAG usadas nesta resposta (honestidade / retrieval-bound) */
+  citations?: MemoryCitation[];
 }
 
 export interface WorldPose {

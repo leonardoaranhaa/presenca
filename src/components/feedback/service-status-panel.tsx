@@ -57,6 +57,18 @@ export function ServiceStatusPanel() {
             }
             desligadoTexto="Só STUN — funciona na maioria das redes domésticas, pode falhar em redes móveis ou de empresa."
           />
+          <Linha
+            termo="Encontro com várias pessoas"
+            ligado={!!s.livekit}
+            ligadoTexto="Servidor de voz configurado — o lar aguenta a família toda."
+            desligadoTexto="Não configurado — a ligação é direta entre aparelhos e degrada-se com muita gente."
+          />
+          <Linha
+            termo="Avatar a partir de fotos"
+            ligado={!!s.avatarMesh}
+            ligadoTexto="Gerador 3D configurado."
+            desligadoTexto="Sem gerador — o pedido fica à espera e o corpo tem de ser associado à mão."
+          />
         </dl>
       )}
     </Card>

@@ -4,6 +4,8 @@
  * BM25F: o mesmo termo em "title" vale mais que em "body" ou "chat".
  */
 
+import { radical } from "./stem";
+
 const DIM = 64;
 
 export const BM25_K1 = 1.2;
@@ -143,12 +145,17 @@ const VAZIAS = new Set([
 ]);
 
 export function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((t) => t.length > 2 && !VAZIAS.has(t));
+  return (
+    text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((t) => t.length > 2 && !VAZIAS.has(t))
+      // Radicalizar aqui serve o BM25F e o vetor de uma vez: são ambos
+      // construídos a partir desta lista. Ver `stem.ts` para o porquê.
+      .map(radical)
+  );
 }
 
 function hashToken(t: string): number {
@@ -164,9 +171,47 @@ export function embedText(text: string): number[] {
   const v = new Array(DIM).fill(0);
   const tokens = tokenize(text);
   if (!tokens.length) return v;
-  for (const t of tokens) v[hashToken(t)] += 1;
+  // unigramas — tokens mais longos pesam um pouco mais (sinal lexical)
+  for (const t of tokens) {
+    const w = 1 + Math.min(0.5, (t.length - 3) * 0.08);
+    v[hashToken(t)] += w;
+  }
+  // bigramas: "goiabeira plantou" captura contigüidade que BM25 já cobre
+  // parcialmente, e ajuda o cosseno quando a query reordena as palavras.
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const bi = tokens[i]! + "_" + tokens[i + 1]!;
+    v[hashToken(bi)] += 0.65;
+  }
   const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
   return v.map((x) => x / norm);
+}
+
+/**
+ * Reciprocal Rank Fusion — funde listas ordenadas sem calibrar escalas.
+ * score(d) = sum_i 1 / (k + rank_i(d))
+ * k=60 é o default clássico de Cormack et al.
+ */
+export function reciprocalRankFusion(
+  rankedLists: { id: string; text: string; bm25?: number; cosine?: number; semantic?: number }[][],
+  kRrf = 60,
+): Map<string, { score: number; text: string; bm25: number; cosine: number }> {
+  const acc = new Map<string, { score: number; text: string; bm25: number; cosine: number }>();
+  for (const list of rankedLists) {
+    list.forEach((hit, rank) => {
+      const prev = acc.get(hit.id) ?? {
+        score: 0,
+        text: hit.text,
+        bm25: 0,
+        cosine: 0,
+      };
+      prev.score += 1 / (kRrf + rank + 1);
+      prev.bm25 = Math.max(prev.bm25, hit.bm25 ?? 0);
+      prev.cosine = Math.max(prev.cosine, hit.cosine ?? 0);
+      prev.text = hit.text || prev.text;
+      acc.set(hit.id, prev);
+    });
+  }
+  return acc;
 }
 
 export function cosine(a: number[], b: number[]): number {
@@ -389,6 +434,7 @@ export type RankedHit = {
   score: number;
   bm25: number;
   cosine?: number;
+  semantic?: number;
 };
 
 export function topKBm25(
@@ -430,8 +476,12 @@ export function topKBm25F(
 }
 
 /**
- * Hybrid: BM25F normalizado + cosine lexical.
- * alpha = peso BM25F (default 0.75).
+ * Hybrid BM25F + embeddings lexicais (unigram+bigram) via Reciprocal Rank Fusion.
+ *
+ * - BM25F manda no ranking lexical por campos (title/correction/body).
+ * - O cosseno só entra em docs com bm25 > 0 (evita ruído do hash 64-D).
+ * - RRF funde as duas listas sem calibrar escalas (melhor que alpha fixo).
+ * - `alpha` mantém-se na assinatura por compat: se != 0.75, cai no blend linear.
  */
 export function topKHybrid(
   query: string,
@@ -441,59 +491,85 @@ export function topKHybrid(
     vector: number[];
     weight: number;
     fields?: Partial<Record<string, string>>;
+    /** embedding semântico opcional (API) */
+    semanticVector?: number[];
   }[],
   k: number,
   alpha = 0.75,
   fieldBoosts?: Record<string, number>,
+  /** vetor semântico da query (mesmo espaço que semanticVector dos docs) */
+  querySemantic?: number[] | null,
 ): RankedHit[] {
   if (!items.length || !query.trim()) return [];
   const index = buildBm25FIndex(items, fieldBoosts ?? BM25F_FIELD_WEIGHTS);
   const qTokens = tokenize(query);
   const qVec = embedText(query);
-
-  // Índice por id: `items.find` dentro do map era O(n²) e esta função corre
-  // a cada mensagem, sobre todos os traços da persona.
   const byId = new Map(items.map((i) => [i.id, i]));
 
   const scored = index.docs.map((doc) => {
     const item = byId.get(doc.id);
     const bm = bm25FScore(qTokens, doc, index);
     const cos = item ? cosine(qVec, item.vector) * (0.5 + 0.5 * Math.min(1, item.weight)) : 0;
-    return { id: doc.id, text: doc.text, bm25: bm, cosine: cos };
+    let sem = 0;
+    if (querySemantic?.length && item?.semanticVector?.length) {
+      sem = cosine(querySemantic, item.semanticVector) * (0.5 + 0.5 * Math.min(1, item.weight));
+    }
+    return { id: doc.id, text: doc.text, bm25: bm, cosine: cos, semantic: sem };
   });
 
-  // Sem qualquer correspondência lexical, o cosseno sozinho não é sinal.
-  //
-  // `embedText` é um hash de 64 dimensões: com um vocabulário real colide
-  // muito, e a semelhança que devolve entre textos sem palavras em comum é
-  // essencialmente ruído. Antes, uma pergunta como "que conselhos ele dava?"
-  // — que não partilha palavra nenhuma com as memórias — devolvia na mesma o
-  // primeiro resultado do cosseno, e o prompt entregava-o ao modelo rotulado
-  // como "contexto recuperado da memória". A presença falava da goiabeira a
-  // quem perguntou por conselhos.
-  //
-  // Devolver nada é melhor: o prompt tem um ramo para esse caso, que manda
-  // usar só o perfil e as memórias já presentes, sem fingir uma recuperação.
-  const comLexical = scored.filter((s) => s.bm25 > 0);
-  if (!comLexical.length) return [];
+  // Gate: precisa de sinal lexical OU semântico forte
+  const comSinal = scored.filter((s) => s.bm25 > 0 || s.semantic > 0.35);
+  if (!comSinal.length) return [];
 
-  const maxBm = Math.max(...comLexical.map((s) => s.bm25), 1e-9);
-  const maxCos = Math.max(...comLexical.map((s) => s.cosine ?? 0), 1e-9);
+  // Compat blend linear
+  if (alpha !== 0.75) {
+    const maxBm = Math.max(...comSinal.map((s) => s.bm25), 1e-9);
+    const maxCos = Math.max(...comSinal.map((s) => s.cosine ?? 0), 1e-9);
+    const maxSem = Math.max(...comSinal.map((s) => s.semantic ?? 0), 1e-9);
+    return comSinal
+      .map((s) => {
+        const bmN = s.bm25 / maxBm;
+        const cosN = (s.cosine ?? 0) / maxCos;
+        const semN = (s.semantic ?? 0) / maxSem;
+        const score = alpha * bmN + (1 - alpha) * 0.5 * cosN + (1 - alpha) * 0.5 * semN;
+        return {
+          id: s.id,
+          text: s.text,
+          score,
+          bm25: s.bm25,
+          cosine: s.cosine,
+          semantic: s.semantic,
+        };
+      })
+      .filter((x) => x.score > 0.02)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, k);
+  }
 
-  return comLexical
-    .map((s) => {
-      const bmN = s.bm25 / maxBm;
-      const cosN = (s.cosine ?? 0) / maxCos;
-      const score = alpha * bmN + (1 - alpha) * cosN;
+  const byBm = [...comSinal].filter((s) => s.bm25 > 0).sort((a, b) => b.bm25 - a.bm25);
+  const byCos = [...comSinal].sort((a, b) => (b.cosine ?? 0) - (a.cosine ?? 0));
+  const lists = [byBm, byCos];
+  if (querySemantic?.length) {
+    const bySem = [...comSinal]
+      .filter((s) => (s.semantic ?? 0) > 0.2)
+      .sort((a, b) => (b.semantic ?? 0) - (a.semantic ?? 0));
+    if (bySem.length) lists.push(bySem);
+  }
+
+  const fused = reciprocalRankFusion(lists, 60);
+
+  return [...fused.entries()]
+    .map(([id, v]) => {
+      const raw = scored.find((s) => s.id === id);
       return {
-        id: s.id,
-        text: s.text,
-        score,
-        bm25: s.bm25,
-        cosine: s.cosine,
+        id,
+        text: v.text,
+        score: v.score,
+        bm25: raw?.bm25 ?? v.bm25,
+        cosine: raw?.cosine ?? v.cosine,
+        semantic: raw?.semantic,
       };
     })
-    .filter((x) => x.score > 0.02)
     .sort((a, b) => b.score - a.score)
     .slice(0, k);
 }

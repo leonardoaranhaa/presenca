@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { Suspense, useEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Billboard, Text } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { GLTF_LOADER_OPTS } from "@/lib/asset-pipeline";
+import { Rotulo3D } from "./rotulo-3d";
 import { usePresence } from "@/lib/store";
 import { AVATAR_HUES, ROOM_SPAWNS, type Persona } from "@/lib/types";
 import type { PeerPose } from "@/lib/realtime";
@@ -9,6 +11,13 @@ import { onSensationEvent, type SensationEvent, type SensationGesture } from "@/
 import { geoCapsule, geoSphere, geoSphereSm } from "./shared-geometries";
 import { ensureNpcAgent, getNavMesh, setNpcDestination, stepNpcAgent } from "./navmesh";
 import { PlayerBody } from "./player-avatar";
+import { MemorialBody, preloadMemorialAvatar } from "./memorial-body";
+import { GlbErrorBoundary } from "./glb-fallback";
+import { setTalkLookTarget } from "./look-target";
+import { isWorldPointShown } from "./frustum-guard";
+import { lodLevelAt } from "./lod";
+import { getSpeechVisual } from "@/lib/speech-visual";
+import { Sensation } from "@/lib/sensation";
 
 const NPC_SPEED = 1.15;
 const APPROACH_RANGE = 9;
@@ -41,6 +50,7 @@ export function Figure({
   talking,
   onSelect,
   gesturePose,
+  nearest,
 }: {
   persona: Persona;
   isPlayer?: boolean;
@@ -51,10 +61,13 @@ export function Figure({
   talking?: boolean;
   onSelect?: () => void;
   gesturePose?: RefObject<GesturePose>;
+  /** anel no chão — presença mais próxima / em conversa */
+  nearest?: boolean;
 }) {
   const group = useRef<THREE.Group>(null);
   const leftArm = useRef<THREE.Group>(null);
   const rightArm = useRef<THREE.Group>(null);
+  const jawMesh = useRef<THREE.Mesh>(null);
   const chest = useRef<THREE.Mesh>(null);
   const leftCheek = useRef<THREE.Mesh>(null);
   const rightCheek = useRef<THREE.Mesh>(null);
@@ -66,7 +79,25 @@ export function Figure({
   useFrame(({ clock }) => {
     if (!group.current) return;
     const t = clock.elapsedTime;
+    // Frustum: saltar animação fina se fora de vista (excepto player)
+    if (!isPlayer) {
+      const wx = group.current.position.x;
+      const wz = group.current.position.z;
+      if (!isWorldPointShown(wx, 1.0, wz, 1.4, 1.2, persona.id)) {
+        group.current.visible = false;
+        return;
+      }
+      group.current.visible = true;
+    }
+    const lod = isPlayer ? 0 : lodLevelAt(group.current.position.x, group.current.position.z);
     const breath = Math.sin(t * (talking ? 3.2 : 1.6) + persona.name.length) * 0.015;
+    const sv = getSpeechVisual();
+    const speechOpen =
+      sv.personaId === persona.id && performance.now() < sv.until
+        ? sv.intensity * (0.55 + 0.45 * Math.abs(Math.sin(t * 12)))
+        : talking
+          ? 0.25 + 0.2 * Math.abs(Math.sin(t * 10))
+          : 0;
 
     if (isPlayer && livePos && liveYaw) {
       group.current.position.set(livePos.x, breath, livePos.z);
@@ -100,40 +131,58 @@ export function Figure({
       }
     }
 
-    // Braços
-    if (leftArm.current && rightArm.current) {
-      // repouso: braços ao longo do corpo
-      let lX = 0.12;
-      let rX = -0.12;
-      let lZ = 0;
-      let rZ = 0;
-      let lRY = 0.15;
-      let rRY = -0.15;
-      if (gType === "hug" && gAmt > 0) {
-        const open = gesturePose?.current?.armOpen ?? 0.85;
-        const hold = gesturePose?.current?.holdBias ?? 0.55;
-        // gAmt sobe, segura conforme holdBias, desce
-        const squeeze = gAmt * (0.7 + 0.3 * hold);
-        lX = 0.12 + 0.55 * open * squeeze;
-        rX = -0.12 - 0.55 * open * squeeze;
-        lZ = 0.35 * open * squeeze;
-        rZ = 0.35 * open * squeeze;
-        lRY = 0.15 - 0.9 * open * squeeze;
-        rRY = -0.15 + 0.9 * open * squeeze;
-      } else if (gType === "hand" && gAmt > 0) {
-        rX = -0.12 - 0.2 * gAmt;
-        rZ = 0.45 * gAmt;
-        rRY = -0.15 + 1.1 * gAmt;
-      } else if (gType === "shoulder" && gAmt > 0) {
-        rX = -0.12 - 0.35 * gAmt;
-        rZ = 0.25 * gAmt;
-        rRY = -0.15 + 0.7 * gAmt;
-      } else if (gType === "farewell" && gAmt > 0) {
-        rZ = 0.2 * gAmt;
-        rRY = -0.15 + 0.5 * gAmt;
+    if (jawMesh.current) {
+      if (lod >= 2) {
+        jawMesh.current.visible = false;
+      } else {
+        jawMesh.current.visible = true;
+        jawMesh.current.scale.set(1, 1 + speechOpen * 0.55, 1 + speechOpen * 0.2);
+        jawMesh.current.position.y = 1.22 - speechOpen * 0.04;
       }
-      leftArm.current.rotation.set(lX, lRY, lZ);
-      rightArm.current.rotation.set(rX, rRY, rZ);
+    }
+
+    // Braços (LOD 2: repouso, sem gestos finos)
+    if (leftArm.current && rightArm.current) {
+      if (lod >= 2) {
+        leftArm.current.rotation.set(0.12, 0.15, 0);
+        rightArm.current.rotation.set(-0.12, -0.15, 0);
+        leftArm.current.visible = true;
+        rightArm.current.visible = true;
+        // still update chest briefly below
+      } else {
+        // repouso: braços ao longo do corpo
+        let lX = 0.12;
+        let rX = -0.12;
+        let lZ = 0;
+        let rZ = 0;
+        let lRY = 0.15;
+        let rRY = -0.15;
+        if (gType === "hug" && gAmt > 0) {
+          const open = gesturePose?.current?.armOpen ?? 0.85;
+          const hold = gesturePose?.current?.holdBias ?? 0.55;
+          // gAmt sobe, segura conforme holdBias, desce
+          const squeeze = gAmt * (0.7 + 0.3 * hold);
+          lX = 0.12 + 0.55 * open * squeeze;
+          rX = -0.12 - 0.55 * open * squeeze;
+          lZ = 0.35 * open * squeeze;
+          rZ = 0.35 * open * squeeze;
+          lRY = 0.15 - 0.9 * open * squeeze;
+          rRY = -0.15 + 0.9 * open * squeeze;
+        } else if (gType === "hand" && gAmt > 0) {
+          rX = -0.12 - 0.2 * gAmt;
+          rZ = 0.45 * gAmt;
+          rRY = -0.15 + 1.1 * gAmt;
+        } else if (gType === "shoulder" && gAmt > 0) {
+          rX = -0.12 - 0.35 * gAmt;
+          rZ = 0.25 * gAmt;
+          rRY = -0.15 + 0.7 * gAmt;
+        } else if (gType === "farewell" && gAmt > 0) {
+          rZ = 0.2 * gAmt;
+          rRY = -0.15 + 0.5 * gAmt;
+        }
+        leftArm.current.rotation.set(lX, lRY, lZ);
+        rightArm.current.rotation.set(rX, rRY, rZ);
+      } // end lod < 2 arms
     }
 
     // Peito: batimento / abraço (emissive + scale)
@@ -209,6 +258,17 @@ export function Figure({
         onSelect?.();
       }}
     >
+      {nearest && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+          <ringGeometry args={[0.42, 0.52, 32]} />
+          <meshBasicMaterial
+            color={memorial ? "#c4a882" : "#8a9a86"}
+            transparent
+            opacity={0.85}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
       {/* torso */}
       <mesh ref={chest} position={[0, 0.72, 0]} geometry={geoCapsule()} castShadow={cast}>
         <meshStandardMaterial
@@ -234,6 +294,10 @@ export function Figure({
       </group>
       <mesh position={[0, 1.38, 0]} geometry={geoSphere()} castShadow={cast}>
         <meshStandardMaterial color={palette.skin} roughness={0.55} />
+      </mesh>
+      <mesh ref={jawMesh} position={[0, 1.22, 0.08]} scale={[0.55, 0.35, 0.45]}>
+        <sphereGeometry args={[0.12, 10, 8]} />
+        <meshStandardMaterial color="#c4a07a" roughness={0.6} />
       </mesh>
       <Hair hair={persona.hair} color={memorial ? "#3a342e" : "#2a241e"} />
       <mesh position={[-0.07, 1.42, 0.16]} geometry={geoSphereSm()}>
@@ -334,14 +398,117 @@ function Hair({ hair, color }: { hair: Persona["hair"]; color: string }) {
  * 3 cm: não havia nome nenhum. Num lar partilhado saber quem está à frente é
  * metade do ponto, por isso passa a ser texto real virado para a câmara.
  */
-export function PeerFigures({ peers }: { peers: PeerPose[] }) {
+function PeerGlbBody({ url, heightM = 1.7 }: { url: string; heightM?: number }) {
+  const { scene } = useGLTF(url, GLTF_LOADER_OPTS.useDraco, GLTF_LOADER_OPTS.useMeshopt);
+  const cloned = useMemo(() => {
+    const c = scene.clone(true);
+    const box = new THREE.Box3().setFromObject(c);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const s = size.y > 0.01 ? heightM / size.y : 1;
+    c.scale.setScalar(s);
+    c.position.y = -box.min.y * s;
+    c.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) {
+        o.castShadow = true;
+      }
+    });
+    return c;
+  }, [scene, heightM]);
+  return <primitive object={cloned} />;
+}
+
+function peerColor(peer: PeerPose): string {
+  if (typeof peer.hue === "number") {
+    return `hsl(${peer.hue % 360} 32% 42%)`;
+  }
+  let h = 0;
+  for (let i = 0; i < (peer.displayName || "").length; i++) {
+    h = (h * 31 + peer.displayName.charCodeAt(i)) % 360;
+  }
+  return `hsl(${h} 28% 40%)`;
+}
+
+function PeerAvatar({ peer }: { peer: PeerPose }) {
+  const group = useRef<THREE.Group>(null);
+  const label = useRef<THREE.Group>(null);
+  const target = useRef({ x: peer.x, z: peer.z, yaw: peer.yaw });
+  const prev = useRef({ x: peer.x, z: peer.z });
+  const speed = useRef(0);
+  const phase = useRef(0);
+  target.current = { x: peer.x, z: peer.z, yaw: peer.yaw };
+
+  useFrame((_, dt) => {
+    if (!group.current) return;
+    const tx = target.current.x;
+    const tz = target.current.z;
+    if (!isWorldPointShown(tx, 1.0, tz, 1.3, 1.5, peer.peerId)) {
+      group.current.visible = false;
+      if (label.current) label.current.visible = false;
+      // ainda interpola um pouco para não saltar ao reentrar
+      const kSlow = 1 - Math.exp(-3 * Math.min(dt, 0.1));
+      group.current.position.x += (tx - group.current.position.x) * kSlow;
+      group.current.position.z += (tz - group.current.position.z) * kSlow;
+      return;
+    }
+    group.current.visible = true;
+    const peerLod = lodLevelAt(tx, tz);
+    if (label.current) label.current.visible = peerLod < 2;
+    const k = 1 - Math.exp(-10 * Math.min(dt, 0.1));
+    const gx = group.current.position.x;
+    const gz = group.current.position.z;
+    group.current.position.x += (target.current.x - gx) * k;
+    group.current.position.z += (target.current.z - gz) * k;
+    const dx = group.current.position.x - prev.current.x;
+    const dz = group.current.position.z - prev.current.z;
+    const dist = Math.hypot(dx, dz);
+    speed.current = dist / Math.max(dt, 1e-4);
+    prev.current.x = group.current.position.x;
+    prev.current.z = group.current.position.z;
+    // bob de caminhada
+    if (speed.current > 0.4) {
+      phase.current += dt * (6 + speed.current * 0.8);
+      group.current.position.y = Math.abs(Math.sin(phase.current)) * 0.04;
+    } else {
+      group.current.position.y *= 0.85;
+    }
+    let dy = target.current.yaw - group.current.rotation.y;
+    while (dy > Math.PI) dy -= Math.PI * 2;
+    while (dy < -Math.PI) dy += Math.PI * 2;
+    group.current.rotation.y += dy * k;
+    if (label.current) {
+      label.current.position.x = group.current.position.x;
+      label.current.position.z = group.current.position.z;
+    }
+  });
+
   return (
-    <>
-      {peers.map((p) => (
-        <group key={p.peerId}>
-          <group position={[p.x, 0, p.z]} rotation={[0, p.yaw + Math.PI, 0]}>
+    <group>
+      <group ref={group} position={[peer.x, 0, peer.z]} rotation={[0, peer.yaw, 0]}>
+        {peer.bodyGlbUrl || peer.glbUrl ? (
+          <GlbErrorBoundary
+            label={`peer:${peer.peerId}`}
+            notify={false}
+            fallback={
+              <mesh position={[0, 0.72, 0]} geometry={geoCapsule()}>
+                <meshStandardMaterial color={peerColor(peer)} roughness={0.7} />
+              </mesh>
+            }
+          >
+            <Suspense
+              fallback={
+                <mesh position={[0, 0.72, 0]} geometry={geoCapsule()}>
+                  <meshStandardMaterial color={peerColor(peer)} />
+                </mesh>
+              }
+            >
+              <PeerGlbBody url={(peer.bodyGlbUrl || peer.glbUrl)!} heightM={peer.heightM ?? 1.7} />
+            </Suspense>
+          </GlbErrorBoundary>
+        ) : (
+          <>
             <mesh position={[0, 0.72, 0]} geometry={geoCapsule()}>
-              <meshStandardMaterial color="#5c6b7a" roughness={0.7} />
+              <meshStandardMaterial color={peerColor(peer)} roughness={0.7} />
             </mesh>
             <mesh position={[0, 1.38, 0]} geometry={geoSphere()}>
               <meshStandardMaterial color="#c4a07a" roughness={0.55} />
@@ -350,21 +517,21 @@ export function PeerFigures({ peers }: { peers: PeerPose[] }) {
               <sphereGeometry args={[0.05, 8, 8]} />
               <meshBasicMaterial color="#8a9a86" />
             </mesh>
-          </group>
-          <Billboard position={[p.x, 2.12, p.z]}>
-            <Text
-              fontSize={0.16}
-              color="#e8e0d2"
-              outlineWidth={0.008}
-              outlineColor="#1c2228"
-              anchorX="center"
-              anchorY="middle"
-              maxWidth={3}
-            >
-              {p.displayName || "Visitante"}
-            </Text>
-          </Billboard>
-        </group>
+          </>
+        )}
+      </group>
+      <group ref={label} position={[peer.x, 0, peer.z]}>
+        <Rotulo3D texto={peer.displayName || "Visitante"} position={[0, 2.12, 0]} />
+      </group>
+    </group>
+  );
+}
+
+export function PeerFigures({ peers }: { peers: PeerPose[] }) {
+  return (
+    <>
+      {peers.map((p) => (
+        <PeerAvatar key={p.peerId} peer={p} />
       ))}
     </>
   );
@@ -397,6 +564,7 @@ function WalkingNpc({
   talking,
   approach,
   onSelect,
+  nearest,
 }: {
   persona: Persona;
   home: { x: number; z: number };
@@ -404,10 +572,12 @@ function WalkingNpc({
   talking: boolean;
   approach: boolean;
   onSelect: () => void;
+  nearest?: boolean;
 }) {
   const livePos = useRef(new THREE.Vector3(home.x, 0, home.z));
   const liveYaw = useRef(0);
   const lastRepath = useRef(0);
+  const lastWave = useRef(0);
   const gesturePose = usePersonaGesture(persona.id);
 
   useEffect(() => {
@@ -425,6 +595,15 @@ function WalkingNpc({
 
     if (approach && getNavMesh() && !hugging) {
       const dist = Math.hypot(playerPos.x - agent.x, playerPos.z - agent.z);
+      // Aceno ao aproximar (gesto visual + háptica se consentida)
+      if (dist < 3.5 && dist > 1.5 && now - lastWave.current > 14_000 && !talking) {
+        lastWave.current = now;
+        void Sensation.offerHand(
+          persona.id,
+          persona.name,
+          persona.kind === "memorial" ? "memorial" : "living",
+        );
+      }
       if (dist > COMFORT_DIST && dist < APPROACH_RANGE) {
         if (!agent.active || now - lastRepath.current > REPATH_MS) {
           const ang = Math.atan2(agent.x - playerPos.x, agent.z - playerPos.z);
@@ -445,19 +624,38 @@ function WalkingNpc({
       livePos.current.set(step.x, 0, step.z);
       liveYaw.current = step.yaw;
     }
+
+    // look-at: quem está em conversa "puxa" o olhar do jogador
+    if (talking) {
+      setTalkLookTarget(livePos.current.x, livePos.current.z, true);
+    }
   });
 
+  const hasGlb = Boolean(persona.bodyScan?.glbUrl?.trim());
+
   return (
-    <Figure
-      persona={persona}
-      position={[home.x, 0, home.z]}
-      yaw={0}
-      livePos={livePos.current}
-      liveYaw={liveYaw}
-      talking={talking}
-      onSelect={onSelect}
-      gesturePose={gesturePose}
-    />
+    <>
+      {hasGlb ? (
+        <MemorialBody
+          persona={persona}
+          livePos={livePos}
+          liveYaw={liveYaw}
+          gesturePose={gesturePose}
+        />
+      ) : (
+        <Figure
+          persona={persona}
+          position={[home.x, 0, home.z]}
+          yaw={0}
+          livePos={livePos.current}
+          liveYaw={liveYaw}
+          talking={talking}
+          onSelect={onSelect}
+          gesturePose={gesturePose}
+          nearest={nearest}
+        />
+      )}
+    </>
   );
 }
 
@@ -509,6 +707,7 @@ export function FamilyFigures({
   playerPos,
   playerYaw,
   talkingId,
+  nearestId,
   onSelect,
 }: {
   personas: Persona[];
@@ -516,10 +715,18 @@ export function FamilyFigures({
   playerPos: THREE.Vector3;
   playerYaw: RefObject<number>;
   talkingId: string | null;
+  nearestId?: string | null;
   onSelect: (id: string) => void;
 }) {
   const others = useMemo(() => personas.filter((p) => p.id !== playerId), [personas, playerId]);
   const player = personas.find((p) => p.id === playerId);
+
+  useEffect(() => {
+    for (const p of others) {
+      const u = p.bodyScan?.glbUrl?.trim();
+      if (u) preloadMemorialAvatar(u);
+    }
+  }, [others]);
 
   return (
     <>
@@ -540,13 +747,21 @@ export function FamilyFigures({
             playerPos={playerPos}
             talking={talkingId === p.id}
             approach={approach}
+            nearest={nearestId === p.id || talkingId === p.id}
             onSelect={() => onSelect(p.id)}
           />
         );
       })}
       {player &&
         (player.bodyScan?.glbUrl ? (
-          <PlayerBody persona={player} playerPos={playerPos} playerYaw={playerYaw} />
+          <GlbErrorBoundary
+            label={`player-world:${player.id}`}
+            fallback={
+              <PlayerWithGesture persona={player} playerPos={playerPos} playerYaw={playerYaw} />
+            }
+          >
+            <PlayerBody persona={player} playerPos={playerPos} playerYaw={playerYaw} />
+          </GlbErrorBoundary>
         ) : (
           <PlayerWithGesture persona={player} playerPos={playerPos} playerYaw={playerYaw} />
         ))}

@@ -9,6 +9,8 @@
  * Sem ELEVENLABS_API_KEY: usa speechSynthesis do browser (pt-BR).
  */
 
+import { estimateSpeechMs, pulseSpeech } from "./speech-visual";
+
 export type VoiceProvider = "elevenlabs" | "browser";
 
 export interface VoiceProfile {
@@ -130,8 +132,14 @@ export async function requestVoiceClone(input: {
   }
 }
 
-export async function speakPresence(text: string, profile?: VoiceProfile) {
+export async function speakPresence(
+  text: string,
+  profile?: VoiceProfile,
+  opts?: { personaId?: string },
+) {
   const p = profile ?? DEFAULT_VOICE;
+  const personaId = opts?.personaId ?? "presence";
+  pulseSpeech(personaId, estimateSpeechMs(text));
   if (p.provider === "elevenlabs" && p.elevenLabsVoiceId) {
     const url = await speakElevenLabs(text, p.elevenLabsVoiceId);
     if (url) {
@@ -142,6 +150,7 @@ export async function speakPresence(text: string, profile?: VoiceProfile) {
       audio.addEventListener("ended", release, { once: true });
       audio.addEventListener("error", release, { once: true });
       try {
+        audio.addEventListener("ended", () => pulseSpeech(personaId, 120, 0), { once: true });
         await audio.play();
       } catch {
         release();

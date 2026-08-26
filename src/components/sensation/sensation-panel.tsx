@@ -17,6 +17,12 @@ import {
   type FacialPrefs,
   FACIAL_PROTOCOL_DOC,
 } from "@/lib/sensation";
+import {
+  startSuitHandshake,
+  stopSuitHandshake,
+  onSuitHandshake,
+  type SuitHandshakeState,
+} from "@/lib/suit-handshake";
 
 /**
  * Painel de preferências · traje / háptica / consentimento memorial.
@@ -24,6 +30,7 @@ import {
 export function SensationPanel({ compact }: { compact?: boolean }) {
   const [prefs, setLocal] = useState<SensationPrefs>(DEFAULT_SENSATION_PREFS);
   const [suitUrl, setSuitUrl] = useState("ws://127.0.0.1:8765");
+  const [handshake, setHandshake] = useState<SuitHandshakeState>({ status: "idle" });
   const [msg, setMsg] = useState<string | null>(null);
   const [facial, setFacial] = useState<FacialPrefs>(DEFAULT_FACIAL_PREFS);
 
@@ -31,6 +38,8 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
     setLocal(loadSensationPrefs());
     setFacial(loadFacialPrefs());
   }, []);
+
+  useEffect(() => onSuitHandshake(setHandshake), []);
 
   function save(partial: Partial<SensationPrefs>) {
     setSensationPrefs(partial);
@@ -221,12 +230,34 @@ export function SensationPanel({ compact }: { compact?: boolean }) {
             variant="outline"
             onClick={() => {
               connectSuitEndpoint(suitUrl.trim());
-              setMsg("Endpoint do traje registado. Ligue o firmware quando existir.");
+              startSuitHandshake(suitUrl.trim());
+              setMsg("Handshake iniciado (hello → hello_ack).");
             }}
           >
-            Ligar bridge
+            Handshake
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              stopSuitHandshake();
+              setMsg("Traje desligado.");
+            }}
+          >
+            Desligar
           </Button>
         </div>
+        <p className="text-[11px] text-faint">
+          Estado:{" "}
+          {handshake.status === "connected"
+            ? `ligado (${"protocol" in handshake ? handshake.protocol : "ok"})`
+            : handshake.status === "connecting"
+              ? "a ligar…"
+              : handshake.status === "error"
+                ? handshake.message
+                : "inactivo"}
+        </p>
         <details className="text-xs text-faint">
           <summary className="cursor-pointer">Protocolo do traje (v0.1)</summary>
           <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-surface-2 p-2 text-[10px] leading-relaxed">

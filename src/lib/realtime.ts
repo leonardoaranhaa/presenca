@@ -11,6 +11,11 @@
 export type PeerPose = {
   peerId: string;
   displayName: string;
+  /** Cor do avatar (hash do nome se omitido) */
+  hue?: number;
+  /** Avatar GLB público do peer (opcional) */
+  glbUrl?: string;
+  heightM?: number;
   placeId: string;
   x: number;
   z: number;
@@ -90,6 +95,18 @@ export type RealtimeConfig = {
   party?: string;
   /** WebSocket URL completa (provider ws) */
   wsUrl?: string;
+  /**
+   * WebSocket genérico SFU (mock / mediasoup gateway).
+   * Usado quando peers ≥ MAX_PEERS_SOFT e LiveKit não está configurado.
+   */
+  sfuUrl?: string;
+  /**
+   * URL do servidor LiveKit (ex: wss://presenca-xxxxx.livekit.cloud).
+   * Preferido sobre sfuUrl para voz em salas grandes.
+   */
+  livekitUrl?: string;
+  /** Preferir LiveKit sempre que houver URL (mesmo com poucos peers). */
+  preferLivekit?: boolean;
 };
 
 const STORAGE_KEY = "presenca_realtime";

@@ -111,6 +111,42 @@ export function ConnectionPanel() {
         Guardar ligação
       </Button>
 
+      <div className="space-y-2 border-t border-border/60 pt-4">
+        <p className="text-sm font-medium">LiveKit SFU (recomendado)</p>
+        <p className="text-xs text-muted leading-relaxed">
+          Com ≥ 6 pessoas (ou se marcar “preferir LiveKit”) a voz usa o SFU LiveKit. Servidor:{" "}
+          <code className="text-[10px]">LIVEKIT_URL</code>,{" "}
+          <code className="text-[10px]">LIVEKIT_API_KEY</code>,{" "}
+          <code className="text-[10px]">LIVEKIT_API_SECRET</code>. Cliente:{" "}
+          <code className="text-[10px]">npm i livekit-client</code>. Token via{" "}
+          <code className="text-[10px]">/api/livekit/token</code>.
+        </p>
+        <Label>URL LiveKit (wss)</Label>
+        <Input
+          value={cfg.livekitUrl ?? ""}
+          onChange={(e) => setCfg({ ...cfg, livekitUrl: e.target.value })}
+          placeholder="wss://presenca-xxxx.livekit.cloud"
+        />
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-muted">
+          <input
+            type="checkbox"
+            checked={!!cfg.preferLivekit}
+            onChange={(e) => setCfg({ ...cfg, preferLivekit: e.target.checked })}
+            className="size-5 shrink-0 accent-[var(--accent)]"
+          />
+          Preferir LiveKit mesmo com poucos peers
+        </label>
+        <Label className="mt-2">SFU genérico (fallback mock/mediasoup)</Label>
+        <Input
+          value={cfg.sfuUrl ?? ""}
+          onChange={(e) => setCfg({ ...cfg, sfuUrl: e.target.value })}
+          placeholder="wss://sfu.exemplo.com/voice"
+        />
+        <Button type="button" size="sm" variant="outline" onClick={() => save(cfg)}>
+          Guardar SFU / LiveKit
+        </Button>
+      </div>
+
       <div className="space-y-3 border-t border-border/60 pt-4">
         <p className="text-sm font-medium">TURN (WebRTC / voz)</p>
         <p className="text-xs text-muted leading-relaxed">

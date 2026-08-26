@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { MapPin, Trees, Users, Ruler, Scan } from "lucide-react";
 import { Shell } from "@/components/layout/shell";
+import { AnchorsEditor } from "@/components/places/anchors-editor";
+import { ScanImportChecklist } from "@/components/places/scan-import-checklist";
+import { LIGHT_PRESET_LABELS, type LightPreset } from "@/components/world/lighting-rig";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,11 +14,6 @@ import { layoutLabel, placeKindLabel, type Place } from "@/lib/places";
 import { clampMetrics, DEFAULT_METRICS } from "@/lib/room-metrics";
 import { usePresence } from "@/lib/store";
 import { uid } from "@/lib/utils";
-import { SensationPanel } from "@/components/sensation/sensation-panel";
-import { MyBodyPanel } from "@/components/persona/my-body-panel";
-import { ConnectionPanel } from "@/components/realtime/connection-panel";
-import { ServiceStatusPanel } from "@/components/feedback/service-status-panel";
-import { PrivacyPanel } from "@/components/legal/privacy-panel";
 
 export const Route = createFileRoute("/places")({ component: PlacesPage });
 
@@ -24,9 +22,6 @@ function PlacesPage() {
   const activePlaceId = usePresence((s) => s.activePlaceId);
   const setActivePlace = usePresence((s) => s.setActivePlace);
   const upsertPlace = usePresence((s) => s.upsertPlace);
-  const qualityTier = usePresence((s) => s.qualityTier);
-  const setQualityTier = usePresence((s) => s.setQualityTier);
-  const quality = usePresence((s) => s.getQuality());
 
   return (
     <Shell>
@@ -39,26 +34,13 @@ function PlacesPage() {
         </p>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-faint">Qualidade 3D:</span>
-        {(["auto", "low", "mid", "high"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setQualityTier(t)}
-            className={
-              qualityTier === t
-                ? "h-11 rounded-full bg-primary px-4 text-xs text-primary-foreground"
-                : "h-11 rounded-full bg-surface-2 px-4 text-xs text-muted"
-            }
-          >
-            {t}
-          </button>
-        ))}
-        <span className="text-xs text-faint">
-          ativo: {quality.tier} · sombras {quality.shadows ? quality.shadowMapSize : "off"}
-        </span>
-      </div>
+      <p className="mt-4 text-xs text-faint">
+        Qualidade 3D, corpo, sensação e privacidade:{" "}
+        <Link to="/settings" className="inline-flex min-h-11 items-center text-accent underline">
+          Configurações
+        </Link>
+        .
+      </p>
 
       <div className="mt-8 grid gap-3 sm:grid-cols-2">
         {places.map((place) => {
@@ -114,39 +96,40 @@ function PlacesPage() {
         })}
       </div>
 
+      {(() => {
+        const ap = places.find((p) => p.id === activePlaceId);
+        if (!ap) return null;
+        return (
+          <div className="mt-4 space-y-3">
+            <AnchorsEditor place={ap} />
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-faint">Luz do lugar:</span>
+              {(Object.keys(LIGHT_PRESET_LABELS) as LightPreset[]).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={
+                    (ap.lightPreset ?? "afternoon") === k
+                      ? "inline-flex min-h-11 items-center rounded-full bg-primary px-4 text-primary-foreground"
+                      : "inline-flex min-h-11 items-center rounded-full bg-surface-2 px-4 text-muted"
+                  }
+                  onClick={() => upsertPlace({ ...ap, lightPreset: k })}
+                >
+                  {LIGHT_PRESET_LABELS[k]}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       <NewSimpleRoom
         onCreate={upsertPlace}
         onEnter={(id) => {
           setActivePlace(id);
         }}
       />
-      <AttachScanGlb />
+      <ScanImportChecklist />
       <PhotogrammetryGuide />
-
-      <div className="mt-6">
-        <MyBodyPanel />
-      </div>
-      <div className="mt-6">
-        <SensationPanel />
-      </div>
-
-      <div className="mt-6">
-        <ServiceStatusPanel />
-
-        <PrivacyPanel />
-      </div>
-      <div className="mt-6">
-        <ConnectionPanel />
-      </div>
-
-      <Card className="mt-6 hidden p-5">
-        <h2 className="font-display text-xl">Interconexão</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          Canal local (BroadcastChannel) entre abas. Próximo passo: PartyKit / WebSocket no mesmo
-          contrato <code className="text-xs">RealtimeTransport</code> em{" "}
-          <code className="text-xs">lib/realtime.ts</code>.
-        </p>
-      </Card>
     </Shell>
   );
 }
@@ -236,67 +219,6 @@ function NewSimpleRoom({
   );
 }
 
-function AttachScanGlb() {
-  const places = usePresence((s) => s.places);
-  const upsertPlace = usePresence((s) => s.upsertPlace);
-  const scanPlaces = places.filter((p) => p.layout === "scan-glb");
-  const [url, setUrl] = useState("/scans/casa-web.glb");
-  const [placeId, setPlaceId] = useState(scanPlaces[0]?.id ?? "");
-
-  if (scanPlaces.length === 0) return null;
-
-  return (
-    <Card className="mt-6 space-y-3 p-5">
-      <h2 className="font-display text-xl">Anexar GLB ao lugar scan</h2>
-      <p className="text-sm text-muted">
-        Depois de colocar o arquivo em <code className="text-xs">public/scans/</code>, informe a URL
-        pública.
-      </p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Lugar</Label>
-          <select
-            className="flex h-11 w-full rounded-md bg-surface-2 px-3 text-sm shadow-[var(--shadow-border)]"
-            value={placeId}
-            onChange={(e) => setPlaceId(e.target.value)}
-          >
-            {scanPlaces.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>URL do GLB</Label>
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="/scans/casa-web.glb"
-          />
-        </div>
-      </div>
-      <Button
-        type="button"
-        onClick={() => {
-          const place = places.find((p) => p.id === placeId);
-          if (!place) return;
-          upsertPlace({
-            ...place,
-            scan: {
-              ...place.scan,
-              glbUrl: url.trim(),
-              source: place.scan?.source ?? "upload",
-            },
-          });
-        }}
-      >
-        Guardar GLB no lugar
-      </Button>
-    </Card>
-  );
-}
-
 function PhotogrammetryGuide() {
   return (
     <Card className="mt-6 space-y-3 p-5">
@@ -315,7 +237,7 @@ function PhotogrammetryGuide() {
         <li>
           Otimize:{" "}
           <code className="text-xs text-foreground">
-            npx @gltf-transform/cli optimize casa.glb casa-web.glb --compress draco
+            npx gltf-transform optimize casa.glb casa-web.glb --compress meshopt
           </code>
         </li>
         <li>

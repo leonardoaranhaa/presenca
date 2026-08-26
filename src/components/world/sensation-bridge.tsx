@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import type { Persona } from "@/lib/types";
 import { Sensation, loadSensationPrefs } from "@/lib/sensation";
+import { gestureAnchor } from "./gesture-vfx";
+import { ROOM_SPAWNS } from "@/lib/types";
 
 /**
  * Quando o jogador entra na zona de uma persona, dispara “presence”.
@@ -33,6 +35,10 @@ export function SensationBridge({
     // entrada na zona ~2.2 m
     if (nearestDist < 2.2 && lastPresence.current !== nearestId) {
       lastPresence.current = nearestId;
+      // VFX no meio do caminho jogador↔persona (âncora já segue jogador; offset leve)
+      const spawn = ROOM_SPAWNS[p.room] ?? { x: 0, z: 0 };
+      gestureAnchor.x = (gestureAnchor.x + spawn.x) * 0.5;
+      gestureAnchor.z = (gestureAnchor.z + spawn.z) * 0.5;
       void Sensation.presenceNear(p.id, p.name, kind);
     }
     if (nearestDist > 3.5) {

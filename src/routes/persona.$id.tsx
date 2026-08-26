@@ -3,6 +3,8 @@ import { Trees } from "lucide-react";
 import { PresenceChat } from "@/components/chat/presence-chat";
 import { Shell } from "@/components/layout/shell";
 import { MemoryVault } from "@/components/persona/memory-vault";
+import { VectorSpaceView } from "@/components/persona/vector-space-view";
+import { AvatarFromMediaPanel } from "@/components/persona/avatar-from-media-panel";
 import { PersonaForm } from "@/components/persona/persona-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,13 +57,48 @@ function PersonaPage() {
 
       <p className="mt-6 max-w-prose text-sm leading-relaxed text-muted">{persona.bio}</p>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-        <MemoryVault persona={persona} />
+      <div className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="space-y-8">
+          <section aria-labelledby="sec-memories">
+            <h2 id="sec-memories" className="sr-only">
+              Cofre de memórias
+            </h2>
+            <MemoryVault persona={persona} />
+          </section>
+
+          <section aria-labelledby="sec-avatar" className="space-y-2">
+            <h2 id="sec-avatar" className="text-xs uppercase tracking-[0.2em] text-muted">
+              Corpo e avatar
+            </h2>
+            <p className="font-mono text-[10px] text-faint">
+              Efeito: bodyScan.glbUrl → figures/PlayerBody no mundo 3D
+            </p>
+            <AvatarFromMediaPanel persona={persona} />
+          </section>
+
+          <section aria-labelledby="sec-vectors" className="space-y-2">
+            <h2 id="sec-vectors" className="text-xs uppercase tracking-[0.2em] text-muted">
+              Mapa do cérebro mímico
+            </h2>
+            <p className="font-mono text-[10px] text-faint">
+              Efeito: só visualização (PCA); não altera o ranking RAG
+            </p>
+            <VectorSpaceView persona={persona} />
+          </section>
+        </div>
+
         <div className="space-y-6">
-          <Card className="flex h-[min(70dvh,640px)] flex-col p-4">
-            <p className="mb-2 text-xs uppercase tracking-wider text-faint">Conversa</p>
-            <PresenceChat persona={persona} compact />
-          </Card>
+          <section aria-labelledby="sec-chat">
+            <Card className="flex h-[min(70dvh,640px)] flex-col p-4">
+              <p id="sec-chat" className="mb-2 text-xs uppercase tracking-wider text-faint">
+                Conversa
+              </p>
+              <p className="mb-2 font-mono text-[10px] text-faint">
+                Efeito: MimeticBrain + POST /api/chat
+              </p>
+              <PresenceChat persona={persona} compact />
+            </Card>
+          </section>
           <details className="rounded-xl bg-card p-4 shadow-[var(--shadow-border)]">
             <summary className="cursor-pointer text-sm font-medium">Editar persona</summary>
             <div className="mt-4">

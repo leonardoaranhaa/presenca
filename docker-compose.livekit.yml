@@ -1,0 +1,18 @@
+# LiveKit SFU local para desenvolvimento
+# Keys de exemplo — NÃO usar em produção
+#
+#   docker compose -f docker-compose.livekit.yml up -d
+#   export LIVEKIT_URL=ws://127.0.0.1:7880
+#   export LIVEKIT_API_KEY=devkey
+#   export LIVEKIT_API_SECRET=secretsecretsecretsecretsecretsecret
+#
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    environment:
+      LIVEKIT_KEYS: "devkey: secretsecretsecretsecretsecretsecret"
